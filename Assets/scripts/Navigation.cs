@@ -8,6 +8,7 @@ public class Navigation : MonoBehaviour {
     public float panSpeed = 0.1f;
     private Rigidbody cameraRigidbody;
     public float zoom = 1.0f;
+    private float lastZoom = 1.0f;
     public AnimationCurve cameraHeightZoom;
     public AnimationCurve cameraRotationZoom;
     public LineRenderer minimapGuideLines;
@@ -37,7 +38,7 @@ public class Navigation : MonoBehaviour {
                 Vector2 deltaMousePosition = new Vector2(Input.mousePosition.x, Input.mousePosition.y) - lastTouchPosition;
 
                 //Camera.main.transform.Translate;
-                cameraRigidbody.velocity += new Vector3(-deltaMousePosition.x * panSpeed, 0.0f, -deltaMousePosition.y * panSpeed);
+                cameraRigidbody.velocity += new Vector3(deltaMousePosition.x * panSpeed, 0.0f, deltaMousePosition.y * panSpeed);
 
                 lastTouchPosition = Input.mousePosition;
             }
@@ -45,20 +46,55 @@ public class Navigation : MonoBehaviour {
             updateMinimapGuideLines();
         }
 
-        if(Input.mouseScrollDelta.magnitude != 0.0f)
-        {
-            zoom -= Input.mouseScrollDelta.y;
+        //float zoomedValue = calculateZoomedValue();
 
-            if (zoom < 1.0f) zoom = 1.0f;
-            if (zoom > 15f) zoom = 15.0f;
+        //if(zoomedValue != 0.0f)
+        //{
+        //    zoom -= zoomedValue;
 
-            Camera.main.transform.localPosition = new Vector3(Camera.main.transform.localPosition.x, cameraHeightZoom.Evaluate(zoom), Camera.main.transform.localPosition.z);
-            Camera.main.transform.localRotation = Quaternion.Euler(cameraRotationZoom.Evaluate(zoom), Camera.main.transform.localRotation.y, Camera.main.transform.localRotation.z);
+        //    if (zoom < 1.0f) zoom = 1.0f;
+        //    if (zoom > 9.0f) zoom = 9.0f;
 
-            updateMinimapGuideLines();
-        }
+        //    cameraRigidbody.velocity += new Vector3(0.0f, (zoom - lastZoom) * 100.0f, 0.0f);
+
+        //    lastZoom = zoom;
+
+        //    //Camera.main.transform.localPosition = new Vector3(Camera.main.transform.localPosition.x, cameraHeightZoom.Evaluate(zoom), Camera.main.transform.localPosition.z);
+        //    Vector3 localRotation = Camera.main.transform.localRotation.eulerAngles;
+        //    Camera.main.transform.localRotation = Camera.main.transform.localRotation = Quaternion.Euler(cameraRotationZoom.Evaluate(zoom), localRotation.y, localRotation.z);
+
+        //    updateMinimapGuideLines();
+        //}
 	}
-    
+
+//    private float lastTouchDistance = -1.0f;
+
+//    private float calculateZoomedValue()
+//    {
+//#if UNITY_ANDROID
+//        if (Input.touchCount != 2)
+//        {
+//            lastTouchDistance = -1.0f;
+//            return 0.0f;
+//        }
+
+//        if (lastTouchDistance < 0.0f) {
+//            lastTouchDistance = (Input.GetTouch(0).rawPosition - Input.GetTouch(1).rawPosition).magnitude;
+//            return 0.0f;
+//        } else
+//        {
+//            float distance = (Input.GetTouch(0).rawPosition - Input.GetTouch(1).rawPosition).magnitude - lastTouchDistance;
+//            lastTouchDistance = (Input.GetTouch(0).rawPosition - Input.GetTouch(1).rawPosition).magnitude;
+
+//            return distance / 10.0f;
+
+//        }
+
+//#else
+//        return Input.mouseScrollDelta.y;
+//#endif
+//    }
+
 
     void FixedUpdate()
     {
