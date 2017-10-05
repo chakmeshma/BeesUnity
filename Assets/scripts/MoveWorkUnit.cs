@@ -3,20 +3,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Threading;
 using System;
+using System.Diagnostics;
 
 public class MoveWorkUnit : WorkUnit
 {
     private Thread workerThread;
     private Vector3 startPosition;
     private Vector3 endPosition;
-    public Bee bee;
+	private Stopwatch stopwatch;
 
-
-    public MoveWorkUnit(Bee bee, Vector3 startPosition, Vector3 endPosition, bool start)
+    public MoveWorkUnit(Bee bee, Vector3 endPosition, bool start)
     {
         this.bee = bee;
-        this.startPosition = startPosition;
         this.endPosition = endPosition;
+		this.stopwatch = Stopwatch.StartNew ();
 
         if(start)
         {
@@ -24,10 +24,14 @@ public class MoveWorkUnit : WorkUnit
         }
     }
 
-    public void start()
+    public override void start()
     {
         workerThread = new Thread(new ThreadStart(doWork));
         workerThread.Start();
+
+		started = true;
+
+        this.startPosition = bee.transform.position;
     }
 
     public void end()
@@ -45,11 +49,68 @@ public class MoveWorkUnit : WorkUnit
     {
         while(true)
         {
-            Thread.Sleep(20);
+            if (this.finished)
+                break;
 
-            this.doneProgress += 0.01f;
+            Thread.Sleep(23);
 
-            bee.transform.position = Vector3.Lerp(startPosition, endPosition, (float)doneProgress);
+            System.Action workAction = new Action(doWorkPart);
+
+            lock(GameController.getInstance().beesActionLock)
+            {
+				if (GameController.getInstance ().beesActions.ContainsKey (workAction))
+					GameController.getInstance ().beesActions.Remove (workAction);
+
+                GameController.getInstance().beesActions.Add(workAction, this);
+            }
         }
+    }
+
+	private long lastTimeStamp = -1;
+
+    private void doWorkPart()
+    {
+        if(endPosition == startPosition)
+        {
+            this.doneProgress = 1.0f;
+
+            if (this.doneProgress >= 1.0f)
+            {
+                this.doneProgress = 1.0f;
+                this.finished = true;
+            }
+
+            return;
+        }
+
+
+		long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+
+		if (lastTimeStamp == -1)
+			lastTimeStamp = elapsedMilliseconds;
+
+        float speedMultiplier = (endPosition - startPosition).magnitude;
+		
+		this.doneProgress += 0.0005f * (elapsedMilliseconds - lastTimeStamp) / speedMultiplier;
+
+		lastTimeStamp = elapsedMilliseconds;
+
+        if(this.doneProgress >= 1.0f)
+        {
+            this.doneProgress = 1.0f;
+            this.finished = true;
+        }
+
+        Vector3 newPosition = Vector3.Lerp(startPosition, endPosition, (float)doneProgress);
+
+        try
+        {
+            bee.transform.position = newPosition;  
+        }
+        catch (Exception e)
+        {
+
+        }
+
     }
 }

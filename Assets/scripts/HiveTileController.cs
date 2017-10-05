@@ -16,6 +16,5 @@ public class HiveTileController : MonoBehaviour {
 
     void OnMouseDown()
     {
-        GameController.getInstance().state = GameController.GameState.HIVE_SELECTED;
-    }
+        GameController.getInstance().state = GameController.GameState.HIVE_SELECTED;    }
 }

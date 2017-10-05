@@ -114,10 +114,14 @@ public class Navigation : MonoBehaviour {
         Ray topLeft = Camera.main.ScreenPointToRay(new Vector2(0.0f, Screen.height));
         Ray topRight = Camera.main.ScreenPointToRay(new Vector2(Screen.width, Screen.height));
 
-        Physics.Raycast(bottomLeft, out bottomLeftHit);
-        Physics.Raycast(bottomRight, out bottomRightHit);
-        Physics.Raycast(topLeft, out topLeftHit);
-        Physics.Raycast(topRight, out topRightHit);
+
+        int layerMask = ~LayerMask.GetMask("Bee", "Ignore Raycast");
+
+
+        Physics.Raycast(bottomLeft, out bottomLeftHit, 100.0f, layerMask);
+        Physics.Raycast(bottomRight, out bottomRightHit, 100.0f, layerMask);
+        Physics.Raycast(topLeft, out topLeftHit, 100.0f, layerMask);
+        Physics.Raycast(topRight, out topRightHit, 100.0f, layerMask);
 
         minimapGuideLines.positionCount = 4;
         minimapGuideLines.SetPosition(0, bottomLeftHit.point + new Vector3(0.0f, 60.0f, 0.0f));
