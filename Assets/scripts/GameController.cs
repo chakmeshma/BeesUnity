@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class GameController : MonoBehaviour {
     private static GameController instance;
@@ -32,13 +34,21 @@ public class GameController : MonoBehaviour {
         }
     }
     public Bee selectedBee;
+    public HiveTileController selectedHiveTile;
 	public Dictionary<System.Action, WorkUnit> beesActions;
     public readonly object beesActionLock = new object();
-	public List<Bee> bees = new List<Bee>();
+    public Hive hive;
+
+    private void initHive()
+    {
+        this.hive = new Hive(1000, 500);
+    }
 
     void Awake()
     {
         instance = this;
+
+        initHive();
 
         beesActions = new Dictionary<System.Action, WorkUnit>();
 
@@ -59,8 +69,6 @@ public class GameController : MonoBehaviour {
 	void Update () {
         List<System.Action> toDelete = new List<System.Action>();
 
-        
-
         lock (beesActionLock)
         {
             foreach (KeyValuePair<System.Action, WorkUnit> entry in beesActions)
@@ -79,12 +87,7 @@ public class GameController : MonoBehaviour {
 		    }
         }
 
-        foreach (Bee bee in bees) {
-			if (bee.workQueue.Count > 0) {
-				if (!bee.workQueue [0].started)
-					bee.workQueue [0].start();
-			}
-		}
+        hive.updateBeesCurrentAction();
 
 		lock(beesActionLock)
 		{
@@ -98,53 +101,101 @@ public class GameController : MonoBehaviour {
 			GameObject newBee = Instantiate (beePrefab, new Vector3 (Random.Range (-30.0f, 30.0f), 6.51f, Random.Range (-30.0f, 30.0f)), Quaternion.identity) as GameObject;
 
 			newBee.AddComponent<Bee> ();
-			newBee.GetComponent<Bee> ().init (Bee.BeeType.Worker, string.Format ("Bee #{0}", Random.Range (101, 999)));
+			newBee.GetComponent<Bee> ().init (Bee.BeeType.Worker, string.Format ("Bee #{0}", Random.Range (1001, 9999)));
 
-				bees.Add(newBee.GetComponent<Bee>());
+				hive.addBee(newBee.GetComponent<Bee>());
 		}
-	}
 
-    public void onTileClicked(Tile tile)
+        if(Input.GetMouseButtonDown(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+            RaycastHit hitInfo;
+
+            int layerMask = LayerMask.GetMask("Minimap", "Bee", "Default", "Outlined");
+
+            if (!EventSystem.current.IsPointerOverGameObject())
+            {
+                if(Physics.Raycast(ray, out hitInfo, 200.0f, layerMask))
+                {
+                    TileController tileController = null;
+                    try
+                    {
+                        tileController = hitInfo.transform.GetComponent<TileController>();
+                    } catch(System.Exception e)
+                    {
+
+                    }
+
+                    Bee bee = null;
+
+                    try
+                    {
+                        bee = hitInfo.transform.GetComponent<Bee>();
+                    }
+                    catch (System.Exception e)
+                    {
+
+                    }
+
+                    if (tileController != null)
+                    {
+                        if (tileController is GrassTileController)
+                        {
+                            onGrassTileClicked((GrassTileController)tileController);
+                        } else if (tileController is HiveTileController)
+                        {
+                            Debug.Log("Hive clicked");
+                        }
+
+                    } else if(bee != null)
+                    {
+                        onBeeClicked(bee);
+                    }
+                }
+            }
+        }
+    }
+
+    public void onTileClicked(TileController tile)
     {
 
     }
 
     public void onBeeClicked(Bee bee)
     {
-        switch(state)
+        if (this.selectedBee != null)
         {
-            case GameState.NAVIGATION:
-                if (this.selectedBee != null)
-                {
-                    setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Bee"));
-                    this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = false;
-                }
-
-                this.selectedBee = bee;
-                this.state = GameState.BEE_SELECTED;
-
-                setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Outlined"));
-                this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = true;
-
-                selectedBee.workQueueChanged = true;
-                break;
-		case GameState.BEE_SELECTED:
-                if (this.selectedBee != null)
-                {
-                    setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Bee"));
-                    this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = false;
-                }
-
-                this.selectedBee = bee;
-
-                setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Outlined"));
-                this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = true;
-
-                this.state = GameState.BEE_SELECTED;
-
-                selectedBee.workQueueChanged = true;
-                break;
+            setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Bee"));
+            this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = false;
         }
+
+        this.selectedBee = bee;
+        this.selectedHiveTile = null;
+
+        setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Outlined"));
+        this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = true;
+        selectedBee.workQueueChanged = true;
+
+        this.state = GameState.BEE_SELECTED;
+    }
+
+    public void onHiveTileClicked(HiveTileController hiveTileController)
+    {
+    }
+
+    public void onGrassTileClicked(GrassTileController grassTileController)
+    {
+        if (this.selectedBee != null)
+        {
+            setBeeLayer(this.selectedBee.gameObject, LayerMask.NameToLayer("Bee"));
+            this.selectedBee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = false;
+        }
+
+        this.selectedBee = null;
+        this.selectedHiveTile = null;
+
+        this.state = GameState.NAVIGATION;
     }
 
 	public void onBeeCommandIssued(BeeCommand beeCommand) {

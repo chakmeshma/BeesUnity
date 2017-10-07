@@ -18,7 +18,7 @@ public class Bee : MonoBehaviour {
     public List<WorkUnit> workQueue;
     public int maxQueueCapacity = 5;
     public string beeName;
-    List<Flower> knownFlowers;
+    List<FlowerTileController> knownFlowers;
 
 	public void init(BeeType type, string beeName)
     {
@@ -35,8 +35,8 @@ public class Bee : MonoBehaviour {
         return moveWorkUnit;
     }
 
-    public void OnMouseDown()
-    {
-        GameController.getInstance().onBeeClicked(this);
-    }
+    //public void OnMouseDown()
+    //{
+    //    GameController.getInstance().onBeeClicked(this);
+    //}
 }

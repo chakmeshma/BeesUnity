@@ -12,7 +12,7 @@ public class HexController : MonoBehaviour {
     public float tileSize = 1.0f;
     public float hiveSetChance;
     public float flowerSetChance;
-    public TileType[][] tiles;
+    public TileController[][] tiles;
     private static HexController _instance;
     
     public static HexController getInstance()
@@ -49,12 +49,12 @@ public class HexController : MonoBehaviour {
     private void initHive() {
         float tileAdjustentDistance = Mathf.Sqrt(3.0f);
 
-        tiles = new TileType[numberOfVerticalTiles * 2 - 1][];
+        tiles = new TileController[numberOfVerticalTiles * 2 - 1][];
         for (int i = -numberOfVerticalTiles + 1; i < numberOfVerticalTiles; i++)
         {
             int index = i + numberOfVerticalTiles - 1;
 
-            tiles[index] = new TileType[numberOfHorizontalTiles * 2 - 1];
+            tiles[index] = new TileController[numberOfHorizontalTiles * 2 - 1];
         }
 
 
@@ -72,10 +72,10 @@ public class HexController : MonoBehaviour {
                 int indexJ = j + numberOfHorizontalTiles - 1;
 
 
-                if (Mathf.Sqrt(Mathf.Pow(tilePosition.x, 2.0f) + Mathf.Pow(tilePosition.z, 2.0f)) < 10.0f)
+                if (Mathf.Sqrt(Mathf.Pow(tilePosition.x, 2.0f) + Mathf.Pow(tilePosition.z, 2.0f)) < 1.0f)
                 {
                     tile = Instantiate(hiveTilePrefab) as GameObject;
-                    tiles[indexI][indexJ] = TileType.HiveTile;
+                    tiles[indexI][indexJ] = tile.GetComponent<HiveTileController>();
                 }
                 else
                 {
@@ -84,9 +84,9 @@ public class HexController : MonoBehaviour {
 
                         tile = Instantiate(flowerTilePrefabs[flowerTileIndex]) as GameObject;
 
-                        tile.transform.localScale = new Vector3(8.0f, 8.0f, 8.0f);
+                        tile.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
 
-                        tiles[indexI][indexJ] = TileType.FlowerTile;
+                        tiles[indexI][indexJ] = tile.GetComponent<FlowerTileController>();
                     }
                     else
                     {
@@ -94,7 +94,7 @@ public class HexController : MonoBehaviour {
 
                         tile = Instantiate(grassTilePrefabs[grassTileIndex]) as GameObject;
 
-                        tiles[indexI][indexJ] = TileType.GrassTile;
+                        tiles[indexI][indexJ] = tile.GetComponent<GrassTileController>();
                     }
                 }
 

@@ -2,19 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class HiveTileController : MonoBehaviour {
+public class HiveTileController : TileController {
+    private Hive hive;
 
-	// Use this for initialization
-	void Start () {
-		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
-
-    void OnMouseDown()
+    public HiveTileController(int indexI, int indexJ, Hive hive) : base(indexI, indexJ)
     {
-        GameController.getInstance().state = GameController.GameState.HIVE_SELECTED;    }
+        this.hive = hive;
+    }
 }
