@@ -115,7 +115,7 @@ public class Navigation : MonoBehaviour {
         Ray topRight = Camera.main.ScreenPointToRay(new Vector2(Screen.width, Screen.height));
 
 
-        int layerMask = ~LayerMask.GetMask("Bee", "Ignore Raycast", "Outlined");
+        int layerMask = ~LayerMask.GetMask("Bee", "Ignore Raycast", "Outlined", "Flower");
 
 
         Physics.Raycast(bottomLeft, out bottomLeftHit, 100.0f, layerMask);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Bee : MonoBehaviour {
+    public Color color;
     public bool workQueueChanged = false;
     public int maxHP = 100;
     public int HP = 100;
@@ -20,10 +21,11 @@ public class Bee : MonoBehaviour {
     public string beeName;
     List<FlowerTileController> knownFlowers;
 
-	public void init(BeeType type, string beeName)
+	public void init(BeeType type, string beeName, Color color)
     {
         this.type = type;
         this.beeName = beeName;
+        this.color = color;
 
         workQueue = new List<WorkUnit>(maxQueueCapacity);
         workQueueChanged = true;

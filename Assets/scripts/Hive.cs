@@ -1,17 +1,22 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class Hive
 {
-    private int maxHoney;
-    private int initialHoney;
-    private List<Bee> bees;
+    public int maxHoney;
+    public int honey;
+    public List<Bee> bees;
+    public string hiveName;
+    public Color color;
 
-    public Hive(int maxHoney, int initialHoney)
+    public Hive(string hiveName, Color color, int maxHoney, int initialHoney)
     {
         this.maxHoney = maxHoney;
-        this.initialHoney = initialHoney;
+        this.honey = initialHoney;
 
         bees = new List<Bee>();
+        this.hiveName = hiveName;
+        this.color = color;
     }
 
     public void updateBeesCurrentAction()

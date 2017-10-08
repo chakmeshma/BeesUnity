@@ -4,12 +4,21 @@ using UnityEngine;
 
 public class FlowerTileController : TileController
 {
-    private int maxHoney;
-    private int initialHoney;
+    public int maxHoney;
+    public int honey;
 
     public FlowerTileController(int indexI, int indexJ, int maxHoney, int initialHoney) : base(indexI, indexJ)
     {
         this.maxHoney = maxHoney;
-        this.initialHoney = initialHoney;
+        this.honey = initialHoney;
+    }
+
+    public void init(int indexI, int indexJ, int maxHoney, int initialHoney)
+    {
+        this.indexI = indexI;
+        this.indexJ = indexJ;
+
+        this.maxHoney = maxHoney;
+        this.honey = initialHoney;
     }
 }

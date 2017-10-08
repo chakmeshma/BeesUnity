@@ -14,6 +14,7 @@ public class HexController : MonoBehaviour {
     public float flowerSetChance;
     public TileController[][] tiles;
     private static HexController _instance;
+    public float hiveCircleRadius = 2.0f;
     
     public static HexController getInstance()
     {
@@ -47,6 +48,9 @@ public class HexController : MonoBehaviour {
     }
 
     private void initHive() {
+        Hive hive = GameController.getInstance().hive;
+
+
         float tileAdjustentDistance = Mathf.Sqrt(3.0f);
 
         tiles = new TileController[numberOfVerticalTiles * 2 - 1][];
@@ -72,9 +76,12 @@ public class HexController : MonoBehaviour {
                 int indexJ = j + numberOfHorizontalTiles - 1;
 
 
-                if (Mathf.Sqrt(Mathf.Pow(tilePosition.x, 2.0f) + Mathf.Pow(tilePosition.z, 2.0f)) < 1.0f)
+                if (Mathf.Sqrt(Mathf.Pow(tilePosition.x, 2.0f) + Mathf.Pow(tilePosition.z, 2.0f)) < hiveCircleRadius)
                 {
                     tile = Instantiate(hiveTilePrefab) as GameObject;
+
+                    tile.GetComponent<HiveTileController>().init(indexI, indexJ, hive);
+
                     tiles[indexI][indexJ] = tile.GetComponent<HiveTileController>();
                 }
                 else
@@ -84,7 +91,8 @@ public class HexController : MonoBehaviour {
 
                         tile = Instantiate(flowerTilePrefabs[flowerTileIndex]) as GameObject;
 
-                        tile.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
+                        tile.GetComponent<FlowerTileController>().init(indexI, indexJ, 100, 100);
+
 
                         tiles[indexI][indexJ] = tile.GetComponent<FlowerTileController>();
                     }

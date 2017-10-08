@@ -52,7 +52,7 @@ public class MoveWorkUnit : WorkUnit
             if (this.finished)
                 break;
 
-            Thread.Sleep(23);
+            Thread.Sleep(16);
 
             System.Action workAction = new Action(doWorkPart);
 
@@ -91,7 +91,7 @@ public class MoveWorkUnit : WorkUnit
 
         float speedMultiplier = (endPosition - startPosition).magnitude;
 		
-		this.doneProgress += 0.0005f * (elapsedMilliseconds - lastTimeStamp) / speedMultiplier;
+		this.doneProgress += 0.0035f * (elapsedMilliseconds - lastTimeStamp) / speedMultiplier;
 
 		lastTimeStamp = elapsedMilliseconds;
 
