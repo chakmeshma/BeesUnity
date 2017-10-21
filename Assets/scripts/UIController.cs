@@ -14,7 +14,8 @@ public class UIController : MonoBehaviour {
     public GameObject flowerCP;
     public GameObject hiveCP;
     public Object moveWorkUnitIcon;
-	private GameObject controlPanelGameobject = null;
+    public Object buildWorkUnitIcon;
+	public GameObject controlPanelGameobject = null;
 	private Bee controlPanelBee = null;
     private FlowerTileController controlPanelFlower = null;
     private Hive hive = null;
@@ -64,6 +65,11 @@ public class UIController : MonoBehaviour {
                         if (bee.workQueue[i] is MoveWorkUnit)
                         {
                             GameObject workUnitIcon = Instantiate(moveWorkUnitIcon, workQueue) as GameObject;
+                            workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                        }
+                        else if (bee.workQueue[i] is BuildWorkUnit)
+                        {
+                            GameObject workUnitIcon = Instantiate(buildWorkUnitIcon, workQueue) as GameObject;
                             workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
                         }
                         //else if(bee.workQueue[i] is GoHomeWorkUnit)
@@ -179,34 +185,7 @@ public class UIController : MonoBehaviour {
 
         Transform workQueue = controlPanelGameobject.transform.Find("Work Queue");
 
-
-        List<Transform> children = new List<Transform>();
-        foreach(Transform child in workQueue)
-            children.Add(child);
-
-        for (int i = 0; i < children.Count; i++)
-        {
-            //Destroy(children[i].gameObject.GetComponent<RawImage>());
-            DestroyImmediate(children[i].gameObject);
-        }
-
-        for(int i = 0; i < bee.workQueue.Count; i++)
-        {
-            if (bee.workQueue[i] is MoveWorkUnit)
-            {
-                GameObject workUnitIcon = Instantiate(moveWorkUnitIcon, workQueue) as GameObject;
-            }
-            //else if(bee.workQueue[i] is GoHomeWorkUnit)
-            //{
-
-            //} else if(bee.workQueue[i] is StoreHoneyWorkUnit)
-            //{
-
-            //} else if(bee.workQueue[i] is CollectHoneyWorkUnit)
-            //{
-
-            //}
-        }
+        bee.workQueueChanged = true;
 
 		this.controlPanelGameobject = controlPanelGameobject;
 		this.controlPanelBee = bee;

@@ -2,20 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class HexController : MonoBehaviour {
-	public Object hiveTilePrefab;
+public class HexController : MonoBehaviour
+{
     public Object[] grassTilePrefabs;
     public Object[] flowerTilePrefabs;
     public int numberOfVerticalTiles;
     public int numberOfHorizontalTiles;
-	public HiveTileAlignment hiveTileAlignment;
+    public HiveTileAlignment hiveTileAlignment;
     public float tileSize = 1.0f;
     public float hiveSetChance;
     public float flowerSetChance;
     public TileController[][] tiles;
     private static HexController _instance;
     public float hiveCircleRadius = 2.0f;
-    
+    public float tileAdjustentDistance = Mathf.Sqrt(3.0f);
+
     public static HexController getInstance()
     {
         return _instance;
@@ -29,29 +30,30 @@ public class HexController : MonoBehaviour {
     }
 
 
-    public enum HiveTileAlignment {
-		Table
-	}
-	// Use this for initialization
-	void Start () {
-		initHive ();
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
+    public enum HiveTileAlignment
+    {
+        Table
+    }
+    // Use this for initialization
+    void Start()
+    {
+        initHive();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
 
     void Awake()
     {
         _instance = this;
     }
 
-    private void initHive() {
+    private void initHive()
+    {
         Hive hive = GameController.getInstance().hive;
-
-
-        float tileAdjustentDistance = Mathf.Sqrt(3.0f);
 
         tiles = new TileController[numberOfVerticalTiles * 2 - 1][];
         for (int i = -numberOfVerticalTiles + 1; i < numberOfVerticalTiles; i++)
@@ -62,7 +64,8 @@ public class HexController : MonoBehaviour {
         }
 
 
-            for (int i = -numberOfVerticalTiles + 1; i < numberOfVerticalTiles; i++) {
+        for (int i = -numberOfVerticalTiles + 1; i < numberOfVerticalTiles; i++)
+        {
             for (int j = -numberOfHorizontalTiles + 1; j < numberOfHorizontalTiles; j++)
             {
                 GameObject tile = null;
@@ -70,15 +73,17 @@ public class HexController : MonoBehaviour {
                 bool setHive = Random.Range(0.0f, 1.0f) < hiveSetChance;
                 bool setFlower = Random.Range(0.0f, 1.0f) < flowerSetChance;
 
-                Vector3 tilePosition = new Vector3(tileAdjustentDistance * i + (tileAdjustentDistance / 2.0f * (j % 2)), 0.0f, 1.5f * j);
-
                 int indexI = i + numberOfVerticalTiles - 1;
                 int indexJ = j + numberOfHorizontalTiles - 1;
+
+                Vector3 tilePosition = new Vector3(tileAdjustentDistance * (indexI - numberOfVerticalTiles) + (tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - numberOfHorizontalTiles));
+
+
 
 
                 if (Mathf.Sqrt(Mathf.Pow(tilePosition.x, 2.0f) + Mathf.Pow(tilePosition.z, 2.0f)) < hiveCircleRadius)
                 {
-                    tile = Instantiate(hiveTilePrefab) as GameObject;
+                    tile = Instantiate(GameController.getInstance().hiveTilePrefab) as GameObject;
 
                     tile.GetComponent<HiveTileController>().init(indexI, indexJ, hive);
 
@@ -86,7 +91,8 @@ public class HexController : MonoBehaviour {
                 }
                 else
                 {
-                    if (setFlower) {
+                    if (setFlower)
+                    {
                         int flowerTileIndex = Random.Range(0, flowerTilePrefabs.Length);
 
                         tile = Instantiate(flowerTilePrefabs[flowerTileIndex]) as GameObject;
@@ -102,6 +108,8 @@ public class HexController : MonoBehaviour {
 
                         tile = Instantiate(grassTilePrefabs[grassTileIndex]) as GameObject;
 
+                        tile.GetComponent<GrassTileController>().init(indexI, indexJ);
+
                         tiles[indexI][indexJ] = tile.GetComponent<GrassTileController>();
                     }
                 }
@@ -109,6 +117,6 @@ public class HexController : MonoBehaviour {
                 tile.transform.localPosition = tilePosition;
 
             }
-		}
-	}
+        }
+    }
 }

@@ -7,10 +7,8 @@ using System.Diagnostics;
 
 public class MoveWorkUnit : WorkUnit
 {
-    private Thread workerThread;
     private Vector3 startPosition;
     private Vector3 endPosition;
-	private Stopwatch stopwatch;
 
     public MoveWorkUnit(Bee bee, Vector3 endPosition, bool start)
     {
@@ -26,23 +24,16 @@ public class MoveWorkUnit : WorkUnit
 
     public override void start()
     {
-        workerThread = new Thread(new ThreadStart(doWork));
-        workerThread.Start();
+        if (!started)
+        {
+            workerThread = new Thread(new ThreadStart(doWork));
+            workerThread.Name = "MoveWorkUnit Thread";
+            workerThread.Start();
 
-		started = true;
+            started = true;
+        }
 
         this.startPosition = bee.transform.position;
-    }
-
-    public void end()
-    {
-        try
-        {
-            workerThread.Abort();
-        } catch(Exception e)
-        {
-
-        }
     }
 
     public void doWork()
@@ -52,16 +43,18 @@ public class MoveWorkUnit : WorkUnit
             if (this.finished)
                 break;
 
-            Thread.Sleep(16);
+            Thread.Sleep(10);
 
             System.Action workAction = new Action(doWorkPart);
 
             lock(GameController.getInstance().beesActionLock)
             {
-				if (GameController.getInstance ().beesActions.ContainsKey (workAction))
-					GameController.getInstance ().beesActions.Remove (workAction);
-
-                GameController.getInstance().beesActions.Add(workAction, this);
+                try
+                {
+                    GameController.getInstance().beesActions.Add(workAction, this);
+                } catch (Exception e)
+                {
+                }
             }
         }
     }
@@ -70,6 +63,9 @@ public class MoveWorkUnit : WorkUnit
 
     private void doWorkPart()
     {
+        if (finished)
+            return;
+
         if(endPosition == startPosition)
         {
             this.doneProgress = 1.0f;
@@ -105,7 +101,10 @@ public class MoveWorkUnit : WorkUnit
 
         try
         {
-            bee.transform.position = newPosition;  
+            bee.transform.position = newPosition;
+
+            if(GameController.getInstance().state == GameController.GameState.BEE_SELECTED)
+                GameController.getInstance().visibilitiesChanged = true;
         }
         catch (Exception e)
         {

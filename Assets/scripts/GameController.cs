@@ -6,21 +6,32 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class GameController : MonoBehaviour {
+public class GameController : MonoBehaviour
+{
+    public long lastUIEventTimeStamp;
+    public Stopwatch uiEventStopWatch;
     private static GameController instance;
-	public UnityEngine.Object beePrefab;
+    public UnityEngine.Object beePrefab;
+    public UnityEngine.Object cHivePrefab;
+    public UnityEngine.Object hiveTilePrefab;
     public enum GameState
     {
         NAVIGATION,
         HIVE_SELECTED,
         BEE_SELECTED,
-        FlOWER_SELECTED
+        FlOWER_SELECTED,
+        HIVE_BUILD
     }
-	public enum BeeCommand {
-		GoHome,
-		CollectHoney,
-		Discover
-	}
+    public enum BeeCommand
+    {
+        GoHome,
+        CollectHoney,
+        Discover
+    }
+    public enum HiveCommand
+    {
+        AddHiveTile
+    }
     private GameState _state = GameState.NAVIGATION;
     public GameState state
     {
@@ -45,6 +56,7 @@ public class GameController : MonoBehaviour {
     private Vector2 lastMouseDownPosition = new Vector2(-1.0f, 1.0f);
     private Vector2 lastMouseUpPosition = new Vector2(-1.0f, 1.0f);
     public float beeNormalHeight;
+    public bool workQueueChangedFlag = false;
 
     private void initHive()
     {
@@ -54,6 +66,8 @@ public class GameController : MonoBehaviour {
     void Awake()
     {
         instance = this;
+
+        uiEventStopWatch = Stopwatch.StartNew();
 
         initHive();
 
@@ -71,11 +85,45 @@ public class GameController : MonoBehaviour {
     private long lastMouseDownTime = 0;
     private long lastMouseUpTime = 0;
 
-	void Start () {
+    void Start()
+    {
         stopWatch = Stopwatch.StartNew();
-	}
-	
-	void Update () {
+    }
+
+    private void LateUpdate()
+    {
+        if (workQueueChangedFlag)
+        {
+            if (selectedBee != null)
+                selectedBee.workQueueChanged = true;
+            workQueueChangedFlag = false;
+        }
+    }
+
+    private bool IsPointerOverUIObject()
+    {
+        if (UIController.getInstance().controlPanelGameobject != null)
+        {
+            Vector2 pointerPosition = Input.mousePosition;
+
+            float canvasWdith = UIController.getInstance().controlPanelGameobject.transform.parent.GetComponent<RectTransform>().rect.width;
+            float canvasHeight = UIController.getInstance().controlPanelGameobject.transform.parent.GetComponent<RectTransform>().rect.height;
+
+            Vector2 controlPanelPosition = UIController.getInstance().controlPanelGameobject.GetComponent<RectTransform>().anchoredPosition;
+            Vector2 controlPanelDimensions = new Vector2(UIController.getInstance().controlPanelGameobject.GetComponent<RectTransform>().rect.width, UIController.getInstance().controlPanelGameobject.GetComponent<RectTransform>().rect.height);
+
+            if (pointerPosition.x >= controlPanelPosition.x && pointerPosition.x <= controlPanelPosition.x + controlPanelDimensions.x &&
+                pointerPosition.y <= (controlPanelPosition.y + canvasHeight) && pointerPosition.y >= (controlPanelPosition.y + canvasHeight) - controlPanelDimensions.y)
+                return true;
+            else
+                return false;
+        }
+        else
+            return false;
+    }
+
+    void Update()
+    {
         List<System.Action> toDelete = new List<System.Action>();
 
         lock (beesActionLock)
@@ -88,51 +136,92 @@ public class GameController : MonoBehaviour {
             }
 
             foreach (KeyValuePair<System.Action, WorkUnit> entry in beesActions)
-		    {
-			    if (entry.Value.finished) {
-				    beesActions [entry.Key].bee.workQueue.Remove (beesActions [entry.Key]);
-                    selectedBee.workQueueChanged = true;
+            {
+                if (entry.Value.finished)
+                {
+                    beesActions[entry.Key].bee.workQueue.Remove(beesActions[entry.Key]);
+                    try
+                    {
+                        selectedBee.workQueueChanged = true;
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
                 }
-		    }
+            }
         }
 
         hive.updateBeesCurrentAction();
 
-		lock(beesActionLock)
-		{
-			foreach(System.Action action in toDelete)
-			{
-				beesActions.Remove(action);
-			}
-		}
-
-		if (Input.GetKeyDown (KeyCode.N)) {
-
-			GameObject newBee = Instantiate (beePrefab, new Vector3 (UnityEngine.Random.Range (-30.0f, 30.0f), beeNormalHeight, UnityEngine.Random.Range (-30.0f, 30.0f)), Quaternion.identity) as GameObject;
-
-			newBee.AddComponent<Bee> ();
-			newBee.GetComponent<Bee> ().init (Bee.BeeType.Worker, string.Format ("Bee #{0}", UnityEngine.Random.Range (1001, 9999)), Color.red);
-
-				hive.addBee(newBee.GetComponent<Bee>());
-		}
-
-        if(Input.GetMouseButtonDown(0))
+        lock (beesActionLock)
         {
-            lastMouseDownTime = stopWatch.ElapsedMilliseconds;
-
-            lastMouseDownPosition = Input.mousePosition;
+            foreach (System.Action action in toDelete)
+            {
+                beesActions.Remove(action);
+            }
         }
 
-        if(Input.GetMouseButtonUp(0))
+        if (Input.GetKeyDown(KeyCode.N))
         {
-            lastMouseUpTime = stopWatch.ElapsedMilliseconds;
 
-            lastMouseUpPosition = Input.mousePosition;
+            GameObject newBee = Instantiate(beePrefab, new Vector3(UnityEngine.Random.Range(-30.0f, 30.0f), beeNormalHeight, UnityEngine.Random.Range(-30.0f, 30.0f)), Quaternion.identity) as GameObject;
+
+            newBee.AddComponent<Bee>();
+            newBee.GetComponent<Bee>().init(Bee.BeeType.Worker, string.Format("Bee #{0}", UnityEngine.Random.Range(1001, 9999)), Color.red);
+
+            hive.addBee(newBee.GetComponent<Bee>());
         }
 
-        if(lastMouseUpTime - lastMouseDownTime < 500L && lastMouseUpTime - lastMouseDownTime > 0 && (lastMouseDownPosition - lastMouseUpPosition).magnitude < 20.0f)
+
+        int touchId = -1;
+
+        if (Application.isEditor)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                lastMouseDownTime = stopWatch.ElapsedMilliseconds;
+
+                lastMouseDownPosition = Input.mousePosition;
+            }
+
+            if (Input.GetMouseButtonUp(0))
+            {
+                lastMouseUpTime = stopWatch.ElapsedMilliseconds;
+
+                lastMouseUpPosition = Input.mousePosition;
+            }
+        }
+        else
+        {
+            if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
+            {
+                touchId = Input.GetTouch(0).fingerId;
+
+                lastMouseDownTime = stopWatch.ElapsedMilliseconds;
+
+                lastMouseDownPosition = Input.GetTouch(0).position;
+            }
+
+            if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Ended)
+            {
+                touchId = Input.GetTouch(0).fingerId;
+
+                lastMouseUpTime = stopWatch.ElapsedMilliseconds;
+
+                lastMouseUpPosition = Input.GetTouch(0).position;
+            }
+        }
+
+        if (lastMouseUpTime - lastMouseDownTime < 500L && lastMouseUpTime - lastMouseDownTime > 0 && (lastMouseDownPosition - lastMouseUpPosition).magnitude < 20.0f)
         {
             lastMouseDownTime = 0L;
+
+            if (uiEventStopWatch.ElapsedMilliseconds - lastUIEventTimeStamp <= 10.0f)
+            {
+
+                return;
+            }
 
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
@@ -140,8 +229,10 @@ public class GameController : MonoBehaviour {
 
             int layerMask = LayerMask.GetMask("Minimap", "Bee", "Default", "Outlined", "Flower");
 
-            if (!EventSystem.current.IsPointerOverGameObject())
+
+            if (!IsPointerOverUIObject())
             {
+
                 if (Physics.Raycast(ray, out hitInfo, 200.0f, layerMask))
                 {
                     TileController tileController = null;
@@ -167,19 +258,33 @@ public class GameController : MonoBehaviour {
 
                     if (tileController != null)
                     {
-                        if (tileController is GrassTileController)
+                        if (tileController.actAsGrassTile)
                         {
-                            onGrassTileClicked((GrassTileController)tileController);
+                            onGrassTileClicked(tileController);
                         }
-                        else if (tileController is HiveTileController)
+                        else
                         {
-                            onHiveTileClicked((HiveTileController)tileController);
+                            if (tileController is GrassTileController)
+                            {
+                                onGrassTileClicked((GrassTileController)tileController);
+                            }
+                            else if (tileController is FlowerTileController)
+                            {
+                                onFlowerTileClicked((FlowerTileController)tileController);
+                            }
+                            else if (tileController is HiveConstructionTileController)
+                            {
+                                onConstructionHiveTileClicked((HiveConstructionTileController)tileController);
+                            }
+                            else if (tileController is HiveBuildTileController)
+                            {
+                                onBuildHiveTileClicked((HiveBuildTileController)tileController);
+                            }
+                            else if (tileController is HiveTileController)
+                            {
+                                onHiveTileClicked((HiveTileController)tileController);
+                            }
                         }
-                        else if (tileController is FlowerTileController)
-                        {
-                            onFlowerTileClicked((FlowerTileController)tileController);
-                        }
-
                     }
                     else if (bee != null)
                     {
@@ -187,6 +292,97 @@ public class GameController : MonoBehaviour {
                     }
                 }
             }
+        }
+
+        accordMapVisibilities();
+    }
+
+    private Bee lastSelectedBee;
+
+    private void accordMapVisibilities()
+    {
+        if (visibilitiesChanged)
+        {
+            switch (state)
+            {
+                case GameState.BEE_SELECTED:
+
+                    if (lastSelectedBee == null)
+                    {
+                        lastSelectedBee = selectedBee;
+                    }
+
+                    if (lastSelectedBee != selectedBee)
+                    {
+                        for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                        {
+                            for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                            {
+                                GameObject tile = null;
+
+                                int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                                int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                                tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+
+                                if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
+                                    tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
+                            }
+                        }
+                    }
+
+                    lastSelectedBee = selectedBee;
+
+                    for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                    {
+                        for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                        {
+                            GameObject tile = null;
+
+                            int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                            int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                            tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+                            TileController tileController = HexController.getInstance().tiles[indexI][indexJ];
+
+                            Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * (indexI - HexController.getInstance().numberOfVerticalTiles) + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - HexController.getInstance().numberOfHorizontalTiles));
+
+                            if (new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude < 10.0f && tileController.getState() != TileController.TileState.Visible)
+                            {
+                                tileController.setState(TileController.TileState.Visible);
+                                selectedBee.visitedTiles.Add(tileController);
+                            }
+                            else if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude >= 10.0f) && (tileController.getState() == TileController.TileState.Visible || selectedBee.visitedTiles.Contains(tileController)))
+                            {
+                                tileController.setState(TileController.TileState.Memorized);
+                            }
+                            else if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude >= 10.0f) && tileController.getState() == TileController.TileState.Visible || tile.GetComponent<TileController>().getState() == TileController.TileState.Unknown)
+                            {
+                                tileController.setState(TileController.TileState.Invisible);
+                            }
+                        }
+                    }
+                    break;
+                case GameState.NAVIGATION:
+                    for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                    {
+                        for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                        {
+                            GameObject tile = null;
+
+                            int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                            int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                            tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+
+                            if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
+                                tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
+                        }
+                    }
+                    break;
+            }
+
+            visibilitiesChanged = false;
         }
     }
 
@@ -200,11 +396,12 @@ public class GameController : MonoBehaviour {
         if (bee == null)
             return;
 
-        if(outlined)
+        if (outlined)
         {
             setBeeLayer(bee.gameObject, LayerMask.NameToLayer("Outlined"));
             bee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = true;
-        } else
+        }
+        else
         {
             setBeeLayer(bee.gameObject, LayerMask.NameToLayer("Bee"));
             bee.gameObject.transform.Find("Plane (1)").GetComponent<Renderer>().enabled = false;
@@ -219,7 +416,8 @@ public class GameController : MonoBehaviour {
 
         if (outlined)
         {
-            setHiveLayer(GameObject.FindObjectsOfType<HiveTileController>(), LayerMask.NameToLayer("Outlined"));        }
+            setHiveLayer(GameObject.FindObjectsOfType<HiveTileController>(), LayerMask.NameToLayer("Outlined"));
+        }
         else
         {
             setHiveLayer(GameObject.FindObjectsOfType<HiveTileController>(), LayerMask.NameToLayer("Hive"));
@@ -230,7 +428,7 @@ public class GameController : MonoBehaviour {
     {
         foreach (HiveTileController hiveTileController in hiveTileControllers)
         {
-            if (!hiveTileController.gameObject.name.Contains("Hive Tile"))
+            if (!hiveTileController.gameObject.name.Contains("Hive"))
                 hiveTileController.gameObject.layer = layerMask;
 
             foreach (Transform child in hiveTileController.gameObject.transform)
@@ -242,7 +440,7 @@ public class GameController : MonoBehaviour {
 
     private void setHiveGameObjectLayer(GameObject gameObject, int layerMask)
     {
-        if (!gameObject.name.Contains("Hive Tile"))
+        if (!gameObject.name.Contains("Hive"))
             gameObject.layer = layerMask;
 
         foreach (Transform child in gameObject.transform)
@@ -283,7 +481,28 @@ public class GameController : MonoBehaviour {
 
         selectedBee.workQueueChanged = true;
 
+        switch (this.state)
+        {
+            case GameState.HIVE_BUILD:
+                foreach (GameObject grassTile in lastDisabledGrassTiles)
+                {
+                    grassTile.SetActive(true);
+                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                    HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                }
+
+                foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+                {
+                    Destroy(cHiveController.gameObject);
+                }
+                break;
+        }
+
         this.state = GameState.BEE_SELECTED;
+
+        visibilitiesChanged = true;
     }
 
     public void onHiveTileClicked(HiveTileController hiveTileController)
@@ -296,12 +515,98 @@ public class GameController : MonoBehaviour {
 
         this.selectedBee = null;
         this.selectedHiveTile = hiveTileController;
-        this.selectedFlowerTile = null ;
+        this.selectedFlowerTile = null;
+
+        switch (this.state)
+        {
+            case GameState.HIVE_BUILD:
+                foreach (GameObject grassTile in lastDisabledGrassTiles)
+                {
+                    grassTile.SetActive(true);
+                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                    HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                }
+
+                foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+                {
+                    Destroy(cHiveController.gameObject);
+                }
+                break;
+        }
 
         this.state = GameState.HIVE_SELECTED;
     }
 
-    public void onGrassTileClicked(GrassTileController grassTileController)
+    public void onBuildHiveTileClicked(HiveBuildTileController hiveBuildTile)
+    {
+        if (state == GameState.BEE_SELECTED)
+        {
+            selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(hiveBuildTile.transform.position.x, beeBuildHeight, hiveBuildTile.transform.position.z), selectedBee.workQueue.Count <= 0));
+            selectedBee.workQueue.Add(new BuildWorkUnit(selectedBee, hiveBuildTile.GetComponent<HiveBuildTileController>().indexI, hiveBuildTile.GetComponent<HiveBuildTileController>().indexJ, selectedBee.workQueue.Count <= 0));
+
+            selectedBee.workQueueChanged = true;
+        }
+    }
+
+    public void onConstructionHiveTileClicked(HiveConstructionTileController hiveConstructionTile)
+    {
+        if (state == GameState.HIVE_BUILD)
+        {
+            Vector3 bHivePosition = hiveConstructionTile.transform.position;
+
+            GameObject bHiveTile = Instantiate(bHivePrefab, bHivePosition, Quaternion.identity) as GameObject;
+
+            GameObject toDeleteFromList = null;
+
+            foreach (GameObject grassTile in lastDisabledGrassTiles)
+            {
+                if (grassTile.transform.position != hiveConstructionTile.transform.position)
+                {
+                    grassTile.SetActive(true);
+                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                    HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                }
+                else
+                {
+                    toDeleteFromList = grassTile;
+
+                    grassTile.SetActive(false);
+                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                    bHiveTile.GetComponent<HiveBuildTileController>().init(indexI, indexJ, hive);
+
+                    HexController.getInstance().tiles[indexI][indexJ] = bHiveTile.GetComponent<HiveBuildTileController>();
+                }
+
+            }
+
+            lastDisabledGrassTiles.Remove(toDeleteFromList);
+
+            foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+            {
+                Destroy(cHiveController.gameObject);
+            }
+
+
+            setBeeOutline(selectedBee, false);
+            setHiveOutline(selectedHiveTile, false);
+            setFlowerOutline(selectedFlowerTile, false);
+            setHiveOutline(selectedHiveTile, false);
+
+            this.selectedBee = null;
+            this.selectedHiveTile = null;
+            this.selectedFlowerTile = null;
+
+            state = GameState.NAVIGATION;
+        }
+    }
+
+    public void onGrassTileClicked(TileController grassTileController)
     {
         if (state == GameState.BEE_SELECTED)
         {
@@ -320,6 +625,25 @@ public class GameController : MonoBehaviour {
             this.selectedHiveTile = null;
             this.selectedFlowerTile = null;
 
+            switch (this.state)
+            {
+                case GameState.HIVE_BUILD:
+                    foreach (GameObject grassTile in lastDisabledGrassTiles)
+                    {
+                        grassTile.SetActive(true);
+                        int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                        int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                        HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                    }
+
+                    foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+                    {
+                        Destroy(cHiveController.gameObject);
+                    }
+                    break;
+            }
+
             this.state = GameState.NAVIGATION;
         }
     }
@@ -335,6 +659,25 @@ public class GameController : MonoBehaviour {
         this.selectedBee = null;
         this.selectedHiveTile = null;
         this.selectedFlowerTile = flowerTileController;
+
+        switch (this.state)
+        {
+            case GameState.HIVE_BUILD:
+                foreach (GameObject grassTile in lastDisabledGrassTiles)
+                {
+                    grassTile.SetActive(true);
+                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                    HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                }
+
+                foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+                {
+                    Destroy(cHiveController.gameObject);
+                }
+                break;
+        }
 
         this.state = GameState.FlOWER_SELECTED;
 
@@ -356,7 +699,8 @@ public class GameController : MonoBehaviour {
         selectedBee.workQueueChanged = true;
     }
 
-    public void updateUI() {
+    public void updateUI()
+    {
         UIController.getInstance().closeAllCP();
         switch (state)
         {
@@ -379,7 +723,7 @@ public class GameController : MonoBehaviour {
 
         gameObject.layer = layer;
 
-        foreach(Transform child in gameObject.transform)
+        foreach (Transform child in gameObject.transform)
         {
             setBeeLayer(child.gameObject, layer);
         }
@@ -396,5 +740,202 @@ public class GameController : MonoBehaviour {
         {
             setFlowerLayer(child.gameObject, layer);
         }
+    }
+
+    public void onHiveCommandIssued(HiveCommand hiveCommand)
+    {
+        switch (hiveCommand)
+        {
+            case HiveCommand.AddHiveTile:
+                turnHiveCircumferenceBuildable();
+                state = GameState.HIVE_BUILD;
+                break;
+        }
+    }
+
+    private List<GameObject> lastDisabledGrassTiles;
+    public UnityEngine.Object bHivePrefab;
+    public float beeBuildHeight;
+    public bool visibilitiesChanged = true;
+
+    private void turnHiveCircumferenceBuildable()
+    {
+
+        lastDisabledGrassTiles = new List<GameObject>();
+
+        for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+        {
+            for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+            {
+                int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * indexI + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * indexJ);
+
+                TileController tileController = HexController.getInstance().tiles[indexI][indexJ];
+
+                if (tileController is HiveTileController && !(tileController is HiveConstructionTileController) && !(tileController is HiveBuildTileController))
+                {
+                    TileController upLeftTile = null;
+                    TileController upRightTile = null;
+                    TileController downLeftTile = null;
+                    TileController downRightTile = null;
+                    TileController leftTile = null;
+                    TileController rightTile = null;
+
+                    int upLeftTileIndexI = indexI + (((indexJ % 2) != 0) ? (1) : (0));
+                    int upLeftTileIndexJ = indexJ - 1;
+
+                    int upRightTileIndexI = indexI + (((indexJ % 2) != 0) ? (0) : (-1));
+                    int upRightTileIndexJ = indexJ - 1;
+
+                    int downLeftTileIndexI = indexI + (((indexJ % 2) != 0) ? (1) : (0));
+                    int downLeftTileIndexJ = indexJ + 1;
+
+                    int downRightTileIndexI = indexI + (((indexJ % 2) != 0) ? (0) : (-1));
+                    int downRightTileIndexJ = indexJ + 1;
+
+                    int leftTileIndexI = indexI + 1;
+                    int leftTileIndexJ = indexJ;
+
+                    int rightTileIndexI = indexI - 1;
+                    int rightTileIndexJ = indexJ;
+
+                    try
+                    {
+                        upLeftTile = HexController.getInstance().tiles[upLeftTileIndexI][upLeftTileIndexJ];
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    try
+                    {
+                        upRightTile = HexController.getInstance().tiles[upRightTileIndexI][upRightTileIndexJ];
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    try
+                    {
+                        downLeftTile = HexController.getInstance().tiles[downLeftTileIndexI][downLeftTileIndexJ];
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    try
+                    {
+                        downRightTile = HexController.getInstance().tiles[downRightTileIndexI][downRightTileIndexJ];
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    try
+                    {
+                        leftTile = HexController.getInstance().tiles[leftTileIndexI][leftTileIndexJ];
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    try
+                    {
+                        rightTile = HexController.getInstance().tiles[rightTileIndexI][rightTileIndexJ];
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    if (upLeftTile != null && upLeftTile is GrassTileController)
+                    {
+                        lastDisabledGrassTiles.Add(upLeftTile.gameObject);
+                        upLeftTile.gameObject.SetActive(false);
+
+                        GameObject cHive = Instantiate(cHivePrefab, upLeftTile.transform.position, Quaternion.identity) as GameObject;
+                        cHive.GetComponent<HiveConstructionTileController>().init(upLeftTileIndexI, upLeftTileIndexJ, hive);
+                        HexController.getInstance().tiles[upLeftTileIndexI][upLeftTileIndexJ] = cHive.GetComponent<HiveConstructionTileController>();
+                    }
+
+                    if (upRightTile != null && upRightTile is GrassTileController)
+                    {
+                        lastDisabledGrassTiles.Add(upRightTile.gameObject);
+
+                        upRightTile.gameObject.SetActive(false);
+
+                        GameObject cHive = Instantiate(cHivePrefab, upRightTile.transform.position, Quaternion.identity) as GameObject;
+                        cHive.GetComponent<HiveConstructionTileController>().init(upRightTileIndexI, upRightTileIndexJ, hive);
+                        HexController.getInstance().tiles[upRightTileIndexI][upRightTileIndexJ] = cHive.GetComponent<HiveConstructionTileController>();
+                    }
+
+                    if (downLeftTile != null && downLeftTile is GrassTileController)
+                    {
+                        lastDisabledGrassTiles.Add(downLeftTile.gameObject);
+
+                        downLeftTile.gameObject.SetActive(false);
+
+                        GameObject cHive = Instantiate(cHivePrefab, downLeftTile.transform.position, Quaternion.identity) as GameObject;
+                        cHive.GetComponent<HiveConstructionTileController>().init(downLeftTileIndexI, downLeftTileIndexJ, hive);
+                        HexController.getInstance().tiles[downLeftTileIndexI][downLeftTileIndexJ] = cHive.GetComponent<HiveConstructionTileController>();
+                    }
+
+                    if (downRightTile != null && downRightTile is GrassTileController)
+                    {
+                        lastDisabledGrassTiles.Add(downRightTile.gameObject);
+
+                        downRightTile.gameObject.SetActive(false);
+
+                        GameObject cHive = Instantiate(cHivePrefab, downRightTile.transform.position, Quaternion.identity) as GameObject;
+                        cHive.GetComponent<HiveConstructionTileController>().init(downRightTileIndexI, downRightTileIndexJ, hive);
+                        HexController.getInstance().tiles[downRightTileIndexI][downRightTileIndexJ] = cHive.GetComponent<HiveConstructionTileController>();
+                    }
+
+                    if (leftTile != null && leftTile is GrassTileController)
+                    {
+                        lastDisabledGrassTiles.Add(leftTile.gameObject);
+
+                        leftTile.gameObject.SetActive(false);
+
+                        GameObject cHive = Instantiate(cHivePrefab, leftTile.transform.position, Quaternion.identity) as GameObject;
+                        cHive.GetComponent<HiveConstructionTileController>().init(leftTileIndexI, leftTileIndexJ, hive);
+                        HexController.getInstance().tiles[leftTileIndexI][leftTileIndexJ] = cHive.GetComponent<HiveConstructionTileController>();
+                    }
+
+                    if (rightTile != null && rightTile is GrassTileController)
+                    {
+                        lastDisabledGrassTiles.Add(rightTile.gameObject);
+
+
+                        rightTile.gameObject.SetActive(false);
+
+                        GameObject cHive = Instantiate(cHivePrefab, rightTile.transform.position, Quaternion.identity) as GameObject;
+                        cHive.GetComponent<HiveConstructionTileController>().init(rightTileIndexI, rightTileIndexJ, hive);
+                        HexController.getInstance().tiles[rightTileIndexI][rightTileIndexJ] = cHive.GetComponent<HiveConstructionTileController>();
+                    }
+                }
+            }
+        }
+
+        //for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+        //{
+        //    for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+        //    {
+        //        int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+        //        int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+        //        if(indexI == 62)
+        //        {
+        //            HexController.getInstance().tiles[indexI][indexJ].gameObject.SetActive(false);
+        //        }
+        //    }
+        //}
     }
 }

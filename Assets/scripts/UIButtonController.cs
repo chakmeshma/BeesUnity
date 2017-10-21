@@ -2,42 +2,49 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UIButtonController : MonoBehaviour {
+public class UIButtonController : MonoBehaviour
+{
     public enum ButtonType
     {
         CollectHoneyButton,
         GoHomeButton,
         DiscoverButton,
-        GoHomeWorkQueueButton
+        MoveWorkQueueButton,
+        BuildHiveTileButton,
+        BuildWorkQueueButton
     }
 
     public ButtonType buttonType;
 
-	public void onClicked() {
-		switch (buttonType) {
-		case ButtonType.CollectHoneyButton:
-			break;
-		case ButtonType.DiscoverButton:
-			break;
-		case ButtonType.GoHomeButton:
-			GameController.getInstance ().onBeeCommandIssued (GameController.BeeCommand.GoHome);
-			break;
-        case ButtonType.GoHomeWorkQueueButton:
-            List<WorkUnit> toDelete = new List<WorkUnit>();
+    public void onClicked()
+    {
+        switch (buttonType)
+        {
+            case ButtonType.CollectHoneyButton:
+                break;
+            case ButtonType.DiscoverButton:
+                break;
+            case ButtonType.GoHomeButton:
+                GameController.getInstance().onBeeCommandIssued(GameController.BeeCommand.GoHome);
+                break;
+            case ButtonType.BuildHiveTileButton:
+                GameController.getInstance().lastUIEventTimeStamp = GameController.getInstance().uiEventStopWatch.ElapsedMilliseconds;
+                GameController.getInstance().onHiveCommandIssued(GameController.HiveCommand.AddHiveTile);
+                break;
+            case ButtonType.MoveWorkQueueButton:
+            case ButtonType.BuildWorkQueueButton:
+                int workUnitIndex = Mathf.RoundToInt(this.GetComponent<RectTransform>().anchoredPosition.x / 58.0f);
+                WorkUnit workUnit = GameController.getInstance().selectedBee.workQueue[workUnitIndex];
 
-            lock (GameController.getInstance().beesActionLock) { 
-            
-                foreach(KeyValuePair<System.Action, WorkUnit> entry in GameController.getInstance().beesActions)
-                {
-                    if(entry.Value.bee == GameController.getInstance().selectedBee && entry.Value is MoveWorkUnit)
-                    {
-                            entry.Value.finished = true;
-                    }
+
+                { 
+                    workUnit.stop();
+                    GameController.getInstance().selectedBee.workQueue.Remove(workUnit);
                 }
 
 
-            }
-            break;
-		}
-	}
+                GameController.getInstance().workQueueChangedFlag = true;
+                break;
+        }
+    }
 }
