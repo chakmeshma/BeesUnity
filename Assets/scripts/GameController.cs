@@ -57,6 +57,7 @@ public class GameController : MonoBehaviour
     private Vector2 lastMouseUpPosition = new Vector2(-1.0f, 1.0f);
     public float beeNormalHeight;
     public bool workQueueChangedFlag = false;
+    public bool addBee = false;
 
     private void initHive()
     {
@@ -128,25 +129,28 @@ public class GameController : MonoBehaviour
 
         lock (beesActionLock)
         {
-            foreach (KeyValuePair<System.Action, WorkUnit> entry in beesActions)
+            if (beesActions != null && beesActions.Count > 0)
             {
-                UnityThread.executeInUpdate(entry.Key);
-
-                toDelete.Add(entry.Key);
-            }
-
-            foreach (KeyValuePair<System.Action, WorkUnit> entry in beesActions)
-            {
-                if (entry.Value.finished)
+                foreach (KeyValuePair<System.Action, WorkUnit> entry in beesActions)
                 {
-                    beesActions[entry.Key].bee.workQueue.Remove(beesActions[entry.Key]);
-                    try
-                    {
-                        selectedBee.workQueueChanged = true;
-                    }
-                    catch (Exception e)
-                    {
+                    UnityThread.executeInUpdate(entry.Key);
 
+                    toDelete.Add(entry.Key);
+                }
+
+                foreach (KeyValuePair<System.Action, WorkUnit> entry in beesActions)
+                {
+                    if (entry.Value.finished)
+                    {
+                        beesActions[entry.Key].bee.workQueue.Remove(beesActions[entry.Key]);
+                        try
+                        {
+                            selectedBee.workQueueChanged = true;
+                        }
+                        catch (Exception e)
+                        {
+
+                        }
                     }
                 }
             }
@@ -162,7 +166,7 @@ public class GameController : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.N))
+        if (addBee)
         {
 
             GameObject newBee = Instantiate(beePrefab, new Vector3(UnityEngine.Random.Range(-30.0f, 30.0f), beeNormalHeight, UnityEngine.Random.Range(-30.0f, 30.0f)), Quaternion.identity) as GameObject;
@@ -171,6 +175,8 @@ public class GameController : MonoBehaviour
             newBee.GetComponent<Bee>().init(Bee.BeeType.Worker, string.Format("Bee #{0}", UnityEngine.Random.Range(1001, 9999)), Color.red);
 
             hive.addBee(newBee.GetComponent<Bee>());
+
+            addBee = false;
         }
 
 
@@ -347,7 +353,7 @@ public class GameController : MonoBehaviour
 
                             Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * (indexI - HexController.getInstance().numberOfVerticalTiles) + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - HexController.getInstance().numberOfHorizontalTiles));
 
-                            if (new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude < 10.0f && tileController.getState() != TileController.TileState.Visible)
+                            if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude < 10.0f && tileController.getState() != TileController.TileState.Visible) || tileController is HiveTileController)
                             {
                                 tileController.setState(TileController.TileState.Visible);
                                 selectedBee.visitedTiles.Add(tileController);

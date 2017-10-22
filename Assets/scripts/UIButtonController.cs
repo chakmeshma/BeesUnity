@@ -6,6 +6,7 @@ public class UIButtonController : MonoBehaviour
 {
     public enum ButtonType
     {
+        AddBeeButton,
         CollectHoneyButton,
         GoHomeButton,
         DiscoverButton,
@@ -24,6 +25,9 @@ public class UIButtonController : MonoBehaviour
                 break;
             case ButtonType.DiscoverButton:
                 break;
+            case ButtonType.AddBeeButton:
+                GameController.getInstance().addBee = true;
+                break;
             case ButtonType.GoHomeButton:
                 GameController.getInstance().onBeeCommandIssued(GameController.BeeCommand.GoHome);
                 break;
@@ -34,7 +38,7 @@ public class UIButtonController : MonoBehaviour
             case ButtonType.MoveWorkQueueButton:
             case ButtonType.BuildWorkQueueButton:
                 int workUnitIndex = Mathf.RoundToInt(this.GetComponent<RectTransform>().anchoredPosition.x / 58.0f);
-                WorkUnit workUnit = GameController.getInstance().selectedBee.workQueue[workUnitIndex];
+                WorkUnit workUnit = GameController.getInstance().selectedBee.workQueue[workUnitIndex];  
 
 
                 { 

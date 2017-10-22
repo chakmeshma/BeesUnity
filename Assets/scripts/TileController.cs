@@ -45,10 +45,11 @@ public class TileController : MonoBehaviour
 
                 foreach (Renderer renderer in this.GetComponentsInChildren<Renderer>())
                 {
-                    renderer.enabled = true;
+                    if (!renderer.gameObject.name.Contains("Plane (4)"))
+                        renderer.enabled = true;
                 }
 
-                foreach(Collider collider in this.GetComponentsInChildren<Collider>())
+                foreach (Collider collider in this.GetComponentsInChildren<Collider>())
                 {
                     collider.enabled = true;
                 }
@@ -56,7 +57,8 @@ public class TileController : MonoBehaviour
             case TileState.Memorized:
                 foreach (Renderer renderer in this.GetComponentsInChildren<Renderer>())
                 {
-                    renderer.enabled = true;
+                    if (!renderer.gameObject.name.Contains("Plane (4)"))
+                        renderer.enabled = true;
                 }
 
                 foreach (Collider collider in this.GetComponentsInChildren<Collider>())
@@ -67,6 +69,8 @@ public class TileController : MonoBehaviour
                 if (transparentTile == null)
                 {
                     transparentTile = Instantiate(this.gameObject, this.transform.position, transform.rotation, transform.parent);
+                    if (this.gameObject.GetComponent<TileController>() is FlowerTileController)
+                        transparentTile.layer = LayerMask.NameToLayer("Flower");
 
                     transparentTile.GetComponent<TileController>().actAsGrassTile = true;
                 }
@@ -75,7 +79,8 @@ public class TileController : MonoBehaviour
 
                 foreach (Renderer renderer in this.GetComponentsInChildren<Renderer>())
                 {
-                    renderer.enabled = false;
+                    if (!renderer.gameObject.name.Contains("Plane (4)"))
+                        renderer.enabled = false;
                 }
 
                 if (this is FlowerTileController || this is HiveTileController)
@@ -96,11 +101,12 @@ public class TileController : MonoBehaviour
 
                 foreach (Renderer renderer in this.GetComponentsInChildren<Renderer>())
                 {
-                    renderer.enabled = false;
+                    if (!renderer.gameObject.name.Contains("Plane (4)"))
+                        renderer.enabled = false;
                 }
 
 
-                if(this is FlowerTileController || this is HiveTileController)
+                if (this is FlowerTileController || this is HiveTileController)
                 {
                     foreach (Collider collider in this.GetComponentsInChildren<Collider>())
                     {
@@ -125,23 +131,33 @@ public class TileController : MonoBehaviour
                 {
                     foreach (Renderer thisRenderer in targetTileController.GetComponentsInChildren<Renderer>())
                     {
-                        thisRenderer.material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-                        thisRenderer.material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                        thisRenderer.material.SetInt("_ZWrite", 0);
-                        thisRenderer.material.DisableKeyword("_ALPHATEST_ON");
-                        thisRenderer.material.DisableKeyword("_ALPHABLEND_ON");
-                        thisRenderer.material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
-                        thisRenderer.material.renderQueue = 3000;
-                        if(thisRenderer.material.HasProperty("_Color"))
-                            thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.3f);
+                        if (thisRenderer.gameObject.name == "Plane (3)")
+                        {
+                            thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.7f);
+
+                        }
+                        else
+                        {
+                            thisRenderer.material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                            thisRenderer.material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                            thisRenderer.material.SetInt("_ZWrite", 0);
+                            thisRenderer.material.DisableKeyword("_ALPHATEST_ON");
+                            thisRenderer.material.DisableKeyword("_ALPHABLEND_ON");
+                            thisRenderer.material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+                            thisRenderer.material.renderQueue = 3000;
+                            if (thisRenderer.material.HasProperty("_Color"))
+                                thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.3f);
+                        }
                     }
-                } else if(targetTileController is GrassTileController)
+                }
+                else if (targetTileController is GrassTileController)
                 {
                     foreach (Renderer thisRenderer in targetTileController.GetComponentsInChildren<Renderer>())
                     {
                         thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.2f);
                     }
-                } else if(targetTileController is HiveTileController)
+                }
+                else if (targetTileController is HiveTileController)
                 {
                     foreach (Renderer thisRenderer in targetTileController.GetComponentsInChildren<Renderer>())
                     {

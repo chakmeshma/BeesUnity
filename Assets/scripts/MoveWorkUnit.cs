@@ -43,7 +43,7 @@ public class MoveWorkUnit : WorkUnit
             if (this.finished)
                 break;
 
-            Thread.Sleep(10);
+            Thread.Sleep(16);
 
             System.Action workAction = new Action(doWorkPart);
 
@@ -54,6 +54,8 @@ public class MoveWorkUnit : WorkUnit
                     GameController.getInstance().beesActions.Add(workAction, this);
                 } catch (Exception e)
                 {
+                    int dv = 0;
+                    dv = 1;
                 }
             }
         }
