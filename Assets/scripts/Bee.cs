@@ -7,7 +7,7 @@ public class Bee : MonoBehaviour {
     public bool workQueueChanged = false;
     public int maxHP = 100;
     public int HP = 100;
-    public int maxHoney = 30;
+    public int maxHoney = 1000;
     public int honey = 0;
     public enum BeeType
     {

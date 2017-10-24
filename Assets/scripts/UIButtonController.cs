@@ -12,7 +12,9 @@ public class UIButtonController : MonoBehaviour
         DiscoverButton,
         MoveWorkQueueButton,
         BuildHiveTileButton,
-        BuildWorkQueueButton
+        BuildWorkQueueButton,
+        CPCloseButton,
+        StoreWorkQueueButton
     }
 
     public ButtonType buttonType;
@@ -24,6 +26,7 @@ public class UIButtonController : MonoBehaviour
             case ButtonType.CollectHoneyButton:
                 break;
             case ButtonType.DiscoverButton:
+                GameController.getInstance().onBeeCommandIssued(GameController.BeeCommand.Discover);
                 break;
             case ButtonType.AddBeeButton:
                 GameController.getInstance().addBee = true;
@@ -37,8 +40,16 @@ public class UIButtonController : MonoBehaviour
                 break;
             case ButtonType.MoveWorkQueueButton:
             case ButtonType.BuildWorkQueueButton:
+            case ButtonType.StoreWorkQueueButton:
                 int workUnitIndex = Mathf.RoundToInt(this.GetComponent<RectTransform>().anchoredPosition.x / 58.0f);
-                WorkUnit workUnit = GameController.getInstance().selectedBee.workQueue[workUnitIndex];  
+
+                WorkUnit workUnit = null;
+
+                try { workUnit = GameController.getInstance().selectedBee.workQueue[workUnitIndex]; }
+                catch (System.Exception e)
+                {
+                    return;
+                }
 
 
                 { 
@@ -48,6 +59,9 @@ public class UIButtonController : MonoBehaviour
 
 
                 GameController.getInstance().workQueueChangedFlag = true;
+                break;
+            case ButtonType.CPCloseButton:
+                GameController.getInstance().resetState();
                 break;
         }
     }

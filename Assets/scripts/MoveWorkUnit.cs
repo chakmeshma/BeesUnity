@@ -36,34 +36,9 @@ public class MoveWorkUnit : WorkUnit
         this.startPosition = bee.transform.position;
     }
 
-    public void doWork()
-    {
-        while(true)
-        {
-            if (this.finished)
-                break;
-
-            Thread.Sleep(16);
-
-            System.Action workAction = new Action(doWorkPart);
-
-            lock(GameController.getInstance().beesActionLock)
-            {
-                try
-                {
-                    GameController.getInstance().beesActions.Add(workAction, this);
-                } catch (Exception e)
-                {
-                    int dv = 0;
-                    dv = 1;
-                }
-            }
-        }
-    }
-
 	private long lastTimeStamp = -1;
 
-    private void doWorkPart()
+    protected override void doWorkPart()
     {
         if (finished)
             return;
@@ -104,6 +79,7 @@ public class MoveWorkUnit : WorkUnit
         try
         {
             bee.transform.position = newPosition;
+            bee.transform.LookAt(new Vector3(endPosition.x, bee.transform.position.y, endPosition.z));
 
             if(GameController.getInstance().state == GameController.GameState.BEE_SELECTED)
                 GameController.getInstance().visibilitiesChanged = true;

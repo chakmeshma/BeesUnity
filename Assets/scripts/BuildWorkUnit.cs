@@ -45,30 +45,9 @@ public class BuildWorkUnit : WorkUnit
         started = true;
     }
 
-    public void doWork()
-    {
-        while (true)
-        {
-            if (this.finished)
-                break;
-
-            Thread.Sleep(16);
-
-            System.Action workAction = new Action(doWorkPart);
-
-            lock (GameController.getInstance().beesActionLock)
-            {
-                if (GameController.getInstance().beesActions.ContainsKey(workAction))
-                    GameController.getInstance().beesActions.Remove(workAction);
-
-                GameController.getInstance().beesActions.Add(workAction, this);
-            }
-        }
-    }
-
     private long lastTimeStamp = -1;
 
-    private void doWorkPart()
+    protected override void doWorkPart()
     {
         if (finished)
             return;
@@ -103,6 +82,8 @@ public class BuildWorkUnit : WorkUnit
             this.finished = true;
 
             Hive hive = HexController.getInstance().tiles[buildTileIndexI][buildTileIndexJ].GetComponent<HiveBuildTileController>().hive;
+
+            hive.maxHoney += 1000;
 
             GameObject newHiveTile = GameObject.Instantiate(GameController.getInstance().hiveTilePrefab, HexController.getInstance().tiles[buildTileIndexI][buildTileIndexJ].transform.position, Quaternion.identity) as GameObject;
 

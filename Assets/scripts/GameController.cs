@@ -61,7 +61,7 @@ public class GameController : MonoBehaviour
 
     private void initHive()
     {
-        this.hive = new Hive("Chakmeshma", Color.red, 1000, 500);
+        this.hive = new Hive("Chakmeshma", Color.red, 100000, 50000);
     }
 
     void Awake()
@@ -80,6 +80,39 @@ public class GameController : MonoBehaviour
     public static GameController getInstance()
     {
         return instance;
+    }
+
+    public void resetState()
+    {
+        setBeeOutline(selectedBee, false);
+        setHiveOutline(selectedHiveTile, false);
+        setFlowerOutline(selectedFlowerTile, false);
+        setHiveOutline(selectedHiveTile, false);
+
+        this.selectedBee = null;
+        this.selectedHiveTile = null;
+        this.selectedFlowerTile = null;
+
+        switch (this.state)
+        {
+            case GameState.HIVE_BUILD:
+                foreach (GameObject grassTile in lastDisabledGrassTiles)
+                {
+                    grassTile.SetActive(true);
+                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                    HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                }
+
+                foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+                {
+                    Destroy(cHiveController.gameObject);
+                }
+                break;
+        }
+
+        this.state = GameState.NAVIGATION;
     }
 
     private Stopwatch stopWatch;
@@ -123,8 +156,23 @@ public class GameController : MonoBehaviour
             return false;
     }
 
+    List<long> timeStamps = new List<long>();
+
     void Update()
     {
+        for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+        {
+            for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+            {
+                GameObject tile = null;
+
+                int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * (indexI - HexController.getInstance().numberOfVerticalTiles) + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - HexController.getInstance().numberOfHorizontalTiles));
+            }
+        }
+
         List<System.Action> toDelete = new List<System.Action>();
 
         lock (beesActionLock)
@@ -156,7 +204,9 @@ public class GameController : MonoBehaviour
             }
         }
 
+
         hive.updateBeesCurrentAction();
+
 
         lock (beesActionLock)
         {
@@ -165,6 +215,7 @@ public class GameController : MonoBehaviour
                 beesActions.Remove(action);
             }
         }
+
 
         if (addBee)
         {
@@ -219,11 +270,12 @@ public class GameController : MonoBehaviour
             }
         }
 
+
         if (lastMouseUpTime - lastMouseDownTime < 500L && lastMouseUpTime - lastMouseDownTime > 0 && (lastMouseDownPosition - lastMouseUpPosition).magnitude < 20.0f)
         {
             lastMouseDownTime = 0L;
 
-            if (uiEventStopWatch.ElapsedMilliseconds - lastUIEventTimeStamp <= 10.0f)
+            if (uiEventStopWatch.ElapsedMilliseconds - lastUIEventTimeStamp <= 100.0f)
             {
 
                 return;
@@ -300,92 +352,332 @@ public class GameController : MonoBehaviour
             }
         }
 
+
         accordMapVisibilities();
+
+        calculateShowFPS();
+    }
+
+    private void calculateShowFPS()
+    {
+        if (timeStamps.Count > 8)
+        {
+            float totalElapsedTime = timeStamps[9] - timeStamps[0];
+            float totalFPS = 1000.0f / totalElapsedTime;
+
+            float biggestDiffTime = 0.0f;
+            int biggestDiffTime1Index = -1;
+
+            for (int i = 0; i < 8; i++)
+            {
+                float diffTime = timeStamps[i + 1] - timeStamps[i];
+
+                if (biggestDiffTime == 0.0f)
+                {
+                    biggestDiffTime = diffTime;
+                    biggestDiffTime1Index = i;
+                }
+
+                if (diffTime > biggestDiffTime)
+                {
+                    biggestDiffTime = diffTime;
+                    biggestDiffTime1Index = i;
+                }
+            }
+
+            DebugController.getInstance().DisplayDebugText(String.Format("Update Time: {0}ms ({1} FPS)", totalElapsedTime, totalFPS));
+
+            timeStamps.Clear();
+        }
     }
 
     private Bee lastSelectedBee;
 
+    private bool firstVisibility = true;
+
     private void accordMapVisibilities()
     {
+        int indexI = -1;
+        int indexJ = -1;
+
         if (visibilitiesChanged)
         {
-            switch (state)
+            if (firstVisibility)
             {
-                case GameState.BEE_SELECTED:
-
-                    if (lastSelectedBee == null)
+                for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                {
+                    for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
                     {
-                        lastSelectedBee = selectedBee;
+                        GameObject tile = null;
+
+                        indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                        indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                        tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+
+                        if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
+                            tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
                     }
+                }
 
-                    if (lastSelectedBee != selectedBee)
-                    {
-                        for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                firstVisibility = false;
+            }
+            else
+            {
+
+                switch (state)
+                {
+                    case GameState.BEE_SELECTED:
+
+                        if (lastSelectedBee == null)
                         {
-                            for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                            lastSelectedBee = selectedBee;
+                        }
+
+                        if (lastSelectedBee != selectedBee)
+                        {
+                            for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
                             {
-                                GameObject tile = null;
+                                for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                                {
+                                    GameObject tile = null;
 
-                                int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
-                                int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+                                    indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                                    indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
 
-                                tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+                                    tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
 
-                                if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
-                                    tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
+                                    if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
+                                        tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
+                                }
                             }
                         }
-                    }
 
-                    lastSelectedBee = selectedBee;
+                        lastSelectedBee = selectedBee;
 
-                    for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
-                    {
-                        for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+
+                        List<Tuple<int, int>> relativeIndicesList = new List<Tuple<int, int>>();
+
+
+                        #region relative indices
+                        relativeIndicesList.Add(new Tuple<int, int>(-6, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-6, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-5, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-4, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-3, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, -6));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-2, 6));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, -6));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(-1, 6));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, -6));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(0, 6));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, -6));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(1, 6));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, -6));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(2, 6));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, -5));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(3, 5));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, -4));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, -3));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, 2));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, 3));
+                        relativeIndicesList.Add(new Tuple<int, int>(4, 4));
+                        relativeIndicesList.Add(new Tuple<int, int>(5, -2));
+                        relativeIndicesList.Add(new Tuple<int, int>(5, -1));
+                        relativeIndicesList.Add(new Tuple<int, int>(5, 0));
+                        relativeIndicesList.Add(new Tuple<int, int>(5, 1));
+                        relativeIndicesList.Add(new Tuple<int, int>(5, 2));
+                        #endregion
+
+
+                        RaycastHit[] raycastHits;
+                        Ray ray = new Ray(new Vector3(selectedBee.transform.position.x, 15.0f, selectedBee.transform.position.z), Vector3.down);
+
+                        //selectedBee.GetComponent<Collider>().enabled = false;
+
+                        raycastHits = Physics.RaycastAll(ray, 20.0f);
+
+                        foreach (RaycastHit raycastHit in raycastHits)
                         {
-                            GameObject tile = null;
-
-                            int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
-                            int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
-
-                            tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
-                            TileController tileController = HexController.getInstance().tiles[indexI][indexJ];
-
-                            Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * (indexI - HexController.getInstance().numberOfVerticalTiles) + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - HexController.getInstance().numberOfHorizontalTiles));
-
-                            if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude < 10.0f && tileController.getState() != TileController.TileState.Visible) || tileController is HiveTileController)
+                            if (raycastHit.transform.gameObject.GetComponent<TileController>() != null)
                             {
+                                indexI = raycastHit.transform.gameObject.GetComponent<TileController>().indexI;
+                                indexJ = raycastHit.transform.gameObject.GetComponent<TileController>().indexJ;
+                            }
+                        }
+
+                        //selectedBee.GetComponent<Collider>().enabled = true;
+
+
+                        foreach (Tuple<int, int> entry in relativeIndicesList)
+                        {
+                            try
+                            {
+                                TileController tileController = HexController.getInstance().tiles[indexI + entry.First][indexJ + entry.Second];
                                 tileController.setState(TileController.TileState.Visible);
                                 selectedBee.visitedTiles.Add(tileController);
                             }
-                            else if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude >= 10.0f) && (tileController.getState() == TileController.TileState.Visible || selectedBee.visitedTiles.Contains(tileController)))
+                            catch (Exception e)
                             {
-                                tileController.setState(TileController.TileState.Memorized);
-                            }
-                            else if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude >= 10.0f) && tileController.getState() == TileController.TileState.Visible || tile.GetComponent<TileController>().getState() == TileController.TileState.Unknown)
-                            {
-                                tileController.setState(TileController.TileState.Invisible);
+
                             }
                         }
-                    }
-                    break;
-                case GameState.NAVIGATION:
-                    for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
-                    {
-                        for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+
+                        foreach (TileController tile in selectedBee.visitedTiles)
                         {
-                            GameObject tile = null;
+                            try
+                            {
+                                if (!relativeIndicesList.Contains(new Tuple<int, int>(tile.indexI - indexI, tile.indexJ - indexJ)) && tile.getState() == TileController.TileState.Visible && !(tile is HiveTileController))
+                                    tile.setState(TileController.TileState.Memorized);
+                            }
+                            catch (Exception e)
+                            {
 
-                            int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
-                            int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
-
-                            tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
-
-                            if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
-                                tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
+                            }
                         }
-                    }
-                    break;
+
+
+                        //for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                        //{
+                        //    for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                        //    {
+                        //        GameObject tile = null;
+
+                        //        indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                        //        indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                        //        tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+                        //        TileController tileController = HexController.getInstance().tiles[indexI][indexJ];
+
+                        //        Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * (indexI - HexController.getInstance().numberOfVerticalTiles) + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - HexController.getInstance().numberOfHorizontalTiles));
+
+                        //        if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude < 10.0f && tileController.getState() != TileController.TileState.Visible) || tileController is HiveTileController)
+                        //        {
+
+                        //        }
+                        //        else if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude >= 10.0f) && (tileController.getState() == TileController.TileState.Visible || selectedBee.visitedTiles.Contains(tileController)))
+                        //        {
+                        //            tileController.setState(TileController.TileState.Memorized);
+                        //        }
+                        //        else if ((new Vector2(selectedBee.transform.position.x - tilePosition.x, selectedBee.transform.position.z - tilePosition.z).magnitude >= 10.0f) && tileController.getState() == TileController.TileState.Visible || tile.GetComponent<TileController>().getState() == TileController.TileState.Unknown)
+                        //        {
+                        //            tileController.setState(TileController.TileState.Invisible);
+                        //        }
+                        //    }
+                        //}
+                        break;
+                    case GameState.NAVIGATION:
+                        //for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                        //{
+                        //    for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                        //    {
+                        //        GameObject tile = null;
+
+                        //        int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                        //        int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                        //        tile = HexController.getInstance().tiles[indexI][indexJ].gameObject;
+
+                        //        if (!(HexController.getInstance().tiles[indexI][indexJ] is HiveTileController))
+                        //            tile.GetComponent<TileController>().setState(TileController.TileState.Invisible);
+                        //    }
+                        //}
+                        break;
+                }
             }
 
             visibilitiesChanged = false;
@@ -513,36 +805,55 @@ public class GameController : MonoBehaviour
 
     public void onHiveTileClicked(HiveTileController hiveTileController)
     {
-        setBeeOutline(selectedBee, false);
-        setHiveOutline(selectedHiveTile, false);
-        setFlowerOutline(selectedFlowerTile, false);
-        setHiveOutline(selectedHiveTile, false);
-        setHiveOutline(hiveTileController, true);
-
-        this.selectedBee = null;
-        this.selectedHiveTile = hiveTileController;
-        this.selectedFlowerTile = null;
-
-        switch (this.state)
+        if (GameState.BEE_SELECTED == state)
         {
-            case GameState.HIVE_BUILD:
-                foreach (GameObject grassTile in lastDisabledGrassTiles)
-                {
-                    grassTile.SetActive(true);
-                    int indexI = grassTile.GetComponent<GrassTileController>().indexI;
-                    int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+            if (selectedBee.honey > 0)
+            {
+                selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(hiveTileController.transform.position.x, beeStoreHeight, hiveTileController.transform.position.z), selectedBee.workQueue.Count <= 0));
+                selectedBee.workQueue.Add(new StoreHoneyWorkUnit(selectedBee, hiveTileController.GetComponent<TileController>().indexI, hiveTileController.GetComponent<TileController>().indexJ, selectedBee.workQueue.Count <= 0));
+            }
+            else
+            {
+                selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(hiveTileController.transform.position.x, beeNormalHeight, hiveTileController.transform.position.z), selectedBee.workQueue.Count <= 0));
+            }
 
-                    HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
-                }
+            selectedBee.workQueueChanged = true;
+        }
+        else
+        {
 
-                foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
-                {
-                    Destroy(cHiveController.gameObject);
-                }
-                break;
+            setBeeOutline(selectedBee, false);
+            setHiveOutline(selectedHiveTile, false);
+            setFlowerOutline(selectedFlowerTile, false);
+            setHiveOutline(selectedHiveTile, false);
+            setHiveOutline(hiveTileController, true);
+
+            this.selectedBee = null;
+            this.selectedHiveTile = hiveTileController;
+            this.selectedFlowerTile = null;
+
+            switch (this.state)
+            {
+                case GameState.HIVE_BUILD:
+                    foreach (GameObject grassTile in lastDisabledGrassTiles)
+                    {
+                        grassTile.SetActive(true);
+                        int indexI = grassTile.GetComponent<GrassTileController>().indexI;
+                        int indexJ = grassTile.GetComponent<GrassTileController>().indexJ;
+
+                        HexController.getInstance().tiles[indexI][indexJ] = grassTile.GetComponent<GrassTileController>();
+                    }
+
+                    foreach (HiveConstructionTileController cHiveController in FindObjectsOfType<HiveConstructionTileController>())
+                    {
+                        Destroy(cHiveController.gameObject);
+                    }
+                    break;
+            }
+
+            this.state = GameState.HIVE_SELECTED;
         }
 
-        this.state = GameState.HIVE_SELECTED;
     }
 
     public void onBuildHiveTileClicked(HiveBuildTileController hiveBuildTile)
@@ -656,15 +967,16 @@ public class GameController : MonoBehaviour
 
     public void onFlowerTileClicked(FlowerTileController flowerTileController)
     {
-        setBeeOutline(selectedBee, false);
-        setHiveOutline(selectedHiveTile, false);
-        setFlowerOutline(selectedFlowerTile, false);
-        setHiveOutline(selectedHiveTile, false);
-        setFlowerOutline(flowerTileController, true);
+        if (state != GameState.BEE_SELECTED)
+        {
+            setBeeOutline(selectedBee, false);
+            setHiveOutline(selectedHiveTile, false);
+            setFlowerOutline(selectedFlowerTile, false);
+            setHiveOutline(selectedHiveTile, false);
+            setFlowerOutline(flowerTileController, true);
+        }
 
-        this.selectedBee = null;
-        this.selectedHiveTile = null;
-        this.selectedFlowerTile = flowerTileController;
+
 
         switch (this.state)
         {
@@ -683,10 +995,24 @@ public class GameController : MonoBehaviour
                     Destroy(cHiveController.gameObject);
                 }
                 break;
+            case GameState.BEE_SELECTED:
+                selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(flowerTileController.transform.position.x, beeFlowerCollectHeight, flowerTileController.transform.position.z), selectedBee.workQueue.Count <= 0));
+                selectedBee.workQueue.Add(new CollectHoneyWorkUnit(selectedBee, flowerTileController.GetComponent<TileController>().indexI, flowerTileController.GetComponent<TileController>().indexJ, selectedBee.workQueue.Count <= 0));
+
+                selectedBee.workQueueChanged = true;
+
+                return;
+                break;
         }
 
-        this.state = GameState.FlOWER_SELECTED;
+        if (state != GameState.BEE_SELECTED)
+        {
+            this.selectedBee = null;
+            this.selectedHiveTile = null;
+            this.selectedFlowerTile = flowerTileController;
 
+            this.state = GameState.FlOWER_SELECTED;
+        }
     }
 
     public void onBeeCommandIssued(BeeCommand beeCommand)
@@ -694,10 +1020,39 @@ public class GameController : MonoBehaviour
         switch (beeCommand)
         {
             case BeeCommand.GoHome:
-                selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(0.0f, 6.51f, 0.0f), selectedBee.workQueue.Count <= 0));
+                float leastDistance = -1.0f;
+
+                HiveTileController hiveTileController = null;
+
+                for (int i = -HexController.getInstance().numberOfVerticalTiles + 1; i < HexController.getInstance().numberOfVerticalTiles; i++)
+                {
+                    for (int j = -HexController.getInstance().numberOfHorizontalTiles + 1; j < HexController.getInstance().numberOfHorizontalTiles; j++)
+                    {
+                        int indexI = i + HexController.getInstance().numberOfVerticalTiles - 1;
+                        int indexJ = j + HexController.getInstance().numberOfHorizontalTiles - 1;
+
+                        Vector3 tilePosition = new Vector3(HexController.getInstance().tileAdjustentDistance * (indexI - HexController.getInstance().numberOfVerticalTiles) + (HexController.getInstance().tileAdjustentDistance / 2.0f * (indexJ % 2)), 0.0f, 1.5f * (indexJ - HexController.getInstance().numberOfHorizontalTiles));
+
+                        if (((tilePosition - selectedBee.transform.position).magnitude < leastDistance || leastDistance == -1.0f) && HexController.getInstance().tiles[indexI][indexJ] is HiveTileController)
+                        {
+                            leastDistance = (tilePosition - selectedBee.transform.position).magnitude;
+                            hiveTileController = (HiveTileController)HexController.getInstance().tiles[indexI][indexJ];
+                        }
+                    }
+                }
+
+                if (selectedBee.honey > 0)
+                {
+                    selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(hiveTileController.transform.position.x, beeStoreHeight, hiveTileController.transform.position.z), selectedBee.workQueue.Count <= 0));
+                    selectedBee.workQueue.Add(new StoreHoneyWorkUnit(selectedBee, hiveTileController.GetComponent<TileController>().indexI, hiveTileController.GetComponent<TileController>().indexJ, selectedBee.workQueue.Count <= 0));
+                }
+                else
+                {
+                    selectedBee.workQueue.Add(new MoveWorkUnit(selectedBee, new Vector3(hiveTileController.transform.position.x, beeNormalHeight, hiveTileController.transform.position.z), selectedBee.workQueue.Count <= 0));
+                }
                 break;
             case BeeCommand.Discover:
-                selectedBee.workQueue.Add(new DiscoverWorkUnit(selectedBee, selectedBee.workQueue.Count <= 0));
+                selectedBee.workQueue.Add(new DiscoverCollectHoneyWorkUnit(selectedBee, selectedBee.workQueue.Count <= 0));
                 break;
 
         }
@@ -763,6 +1118,8 @@ public class GameController : MonoBehaviour
     public UnityEngine.Object bHivePrefab;
     public float beeBuildHeight;
     public bool visibilitiesChanged = true;
+    public float beeFlowerCollectHeight;
+    public float beeStoreHeight;
 
     private void turnHiveCircumferenceBuildable()
     {

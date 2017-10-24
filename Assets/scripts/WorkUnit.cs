@@ -7,6 +7,7 @@ using UnityEngine;
 
 public abstract class WorkUnit
 {
+    protected int threadWait = 17;
     protected Stopwatch stopwatch;
     protected Thread workerThread;
     protected bool repeating = false;
@@ -48,4 +49,27 @@ public abstract class WorkUnit
             }
         }
     }
+
+    public void doWork()
+    {
+        while (true)
+        {
+            if (this.finished)
+                break;
+
+            Thread.Sleep(threadWait);
+
+            System.Action workAction = new Action(doWorkPart);
+
+            lock (GameController.getInstance().beesActionLock)
+            {
+                if (GameController.getInstance().beesActions.ContainsKey(workAction))
+                    GameController.getInstance().beesActions.Remove(workAction);
+
+                GameController.getInstance().beesActions.Add(workAction, this);
+            }
+        }
+    }
+
+    protected abstract void doWorkPart();
 }

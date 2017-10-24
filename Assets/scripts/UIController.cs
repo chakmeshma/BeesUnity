@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class UIController : MonoBehaviour {
+public class UIController : MonoBehaviour
+{
     private static UIController instance;
     public static UIController getInstance()
     {
@@ -15,91 +16,113 @@ public class UIController : MonoBehaviour {
     public GameObject hiveCP;
     public Object moveWorkUnitIcon;
     public Object buildWorkUnitIcon;
-	public GameObject controlPanelGameobject = null;
-	private Bee controlPanelBee = null;
+    public Object collectHoneyWorkUnitIcon;
+    public GameObject controlPanelGameobject = null;
+    public Object storeWorkUnitIcon;
+    private Bee controlPanelBee = null;
     private FlowerTileController controlPanelFlower = null;
     private Hive hive = null;
 
 
-    public void onGoHomePressed() {
-		GameController.getInstance ().onBeeCommandIssued (GameController.BeeCommand.GoHome);
-	}
+    public void onGoHomePressed()
+    {
+        GameController.getInstance().onBeeCommandIssued(GameController.BeeCommand.GoHome);
+    }
 
-	void Update() {
+    void Update()
+    {
         if (controlPanelGameobject != null)
         {
-            if (controlPanelGameobject != null && controlPanelBee != null)
+            GameObject honeyGameObject = null;
+
+            switch(controlPanelGameobject.name)
             {
-                Bee bee = controlPanelBee;
+                case "WorkerBee ControlPanel":
+                    Bee bee = controlPanelBee;
 
-                controlPanelGameobject.transform.Find("Color").GetComponent<UnityEngine.UI.RawImage>().color = bee.color;
-                controlPanelGameobject.transform.Find("Bee Name").GetComponent<Text>().text = bee.beeName;
+                    controlPanelGameobject.transform.Find("Color").GetComponent<UnityEngine.UI.RawImage>().color = bee.color;
+                    controlPanelGameobject.transform.Find("Bee Name").GetComponent<Text>().text = bee.beeName;
 
-                GameObject hpGameObject = controlPanelGameobject.transform.Find("HP Container").Find("HP").gameObject;
-                GameObject honeyGameObject = controlPanelGameobject.transform.Find("Honey Container").Find("Honey").gameObject;
+                    GameObject hpGameObject = controlPanelGameobject.transform.Find("HP Container").Find("HP").gameObject;
+                    honeyGameObject = controlPanelGameobject.transform.Find("Honey Container").Find("Honey").gameObject;
 
-                hpGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)bee.HP) / bee.maxHP));
-                honeyGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)bee.honey) / bee.maxHoney));
+                    hpGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)bee.HP) / bee.maxHP));
+                    honeyGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)bee.honey) / bee.maxHoney));
 
-                controlPanelGameobject.transform.Find("HP Text").GetComponent<Text>().text = string.Format("{0:0.0%}", (float)bee.HP / bee.maxHP);
+                    controlPanelGameobject.transform.Find("HP Text").GetComponent<Text>().text = string.Format("{0:0.0%}", (float)bee.HP / bee.maxHP);
 
-                controlPanelGameobject.transform.Find("Honey Text").GetComponent<Text>().text = string.Format("{0:0.0%}", (float)bee.honey / bee.maxHoney);
+                    controlPanelGameobject.transform.Find("Honey Text").GetComponent<Text>().text = string.Format("{0:0.0%}", (float)bee.honey / bee.maxHoney);
 
-                if (bee.workQueueChanged)
-                {
-                    Transform workQueue = controlPanelGameobject.transform.Find("Work Queue");
-
-
-                    List<Transform> children = new List<Transform>();
-                    foreach (Transform child in workQueue)
-                        children.Add(child);
-
-                    for (int i = 0; i < children.Count; i++)
+                    if (bee.workQueueChanged)
                     {
-                        //Destroy(children[i].gameObject.GetComponent<RawImage>());
-                        DestroyImmediate(children[i].gameObject);
-                    }
+                        Transform workQueue = controlPanelGameobject.transform.Find("Work Queue");
 
-                    for (int i = 0; i < bee.workQueue.Count; i++)
-                    {
-                        if (bee.workQueue[i] is MoveWorkUnit)
+
+                        List<Transform> children = new List<Transform>();
+                        foreach (Transform child in workQueue)
+                            children.Add(child);
+
+                        for (int i = 0; i < children.Count; i++)
                         {
-                            GameObject workUnitIcon = Instantiate(moveWorkUnitIcon, workQueue) as GameObject;
-                            workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                            //Destroy(children[i].gameObject.GetComponent<RawImage>());
+                            DestroyImmediate(children[i].gameObject);
                         }
-                        else if (bee.workQueue[i] is BuildWorkUnit)
+
+                        for (int i = 0; i < bee.workQueue.Count; i++)
                         {
-                            GameObject workUnitIcon = Instantiate(buildWorkUnitIcon, workQueue) as GameObject;
-                            workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                            if (bee.workQueue[i] is MoveWorkUnit)
+                            {
+                                GameObject workUnitIcon = Instantiate(moveWorkUnitIcon, workQueue) as GameObject;
+                                workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                            }
+                            else if (bee.workQueue[i] is BuildWorkUnit)
+                            {
+                                GameObject workUnitIcon = Instantiate(buildWorkUnitIcon, workQueue) as GameObject;
+                                workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                            }
+                            else if (bee.workQueue[i] is CollectHoneyWorkUnit)
+                            {
+                                GameObject workUnitIcon = Instantiate(collectHoneyWorkUnitIcon, workQueue) as GameObject;
+                                workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                            }
+                            else if (bee.workQueue[i] is StoreHoneyWorkUnit)
+                            {
+                                GameObject workUnitIcon = Instantiate(storeWorkUnitIcon, workQueue) as GameObject;
+                                workUnitIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(58 * i, 0.0f);
+                            }
+
+                            //} else if(bee.workQueue[i] is StoreHoneyWorkUnit)
+                            //{
+
+                            //} else if(bee.workQueue[i] is CollectHoneyWorkUnit)
+                            //{
+
+                            //}
                         }
-                        //else if(bee.workQueue[i] is GoHomeWorkUnit)
-                        //{
 
-                        //} else if(bee.workQueue[i] is StoreHoneyWorkUnit)
-                        //{
-
-                        //} else if(bee.workQueue[i] is CollectHoneyWorkUnit)
-                        //{
-
-                        //}
+                        bee.workQueueChanged = false;
                     }
+                    break;
+                case "Flower ControlPanel":
+                    honeyGameObject = controlPanelGameobject.transform.Find("Honey Container").Find("Honey").gameObject;
 
-                    bee.workQueueChanged = false;
-                }
-            }
-            else if (hive != null)
-            {
-                controlPanelGameobject.transform.Find("Color").GetComponent<UnityEngine.UI.RawImage>().color = hive.color;
-                controlPanelGameobject.transform.Find("Hive Name").GetComponent<Text>().text = hive.hiveName;
+                    honeyGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)controlPanelFlower.honey) / controlPanelFlower.maxHoney));
 
-                GameObject honeyGameObject = controlPanelGameobject.transform.Find("Honey Container").Find("Honey").gameObject;
+                    controlPanelGameobject.transform.Find("Honey Text").GetComponent<Text>().text = string.Format("{0:0.0%}", ((float)controlPanelFlower.honey) / controlPanelFlower.maxHoney);
+                    break;
+                case "Hive ControlPanel":
+                    controlPanelGameobject.transform.Find("Color").GetComponent<UnityEngine.UI.RawImage>().color = hive.color;
+                    controlPanelGameobject.transform.Find("Hive Name").GetComponent<Text>().text = hive.hiveName;
 
-                honeyGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)hive.honey) / hive.maxHoney));
+                    honeyGameObject = controlPanelGameobject.transform.Find("Honey Container").Find("Honey").gameObject;
 
-                controlPanelGameobject.transform.Find("Honey Text").GetComponent<Text>().text = string.Format("{0:0.0%}", (float)hive.honey / hive.maxHoney);
+                    honeyGameObject.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Lerp(0.0f, 208.432f, ((float)hive.honey) / hive.maxHoney));
+
+                    controlPanelGameobject.transform.Find("Honey Text").GetComponent<Text>().text = string.Format("{0:0.0%}", (float)hive.honey / hive.maxHoney);
+                    break;
             }
         }
-	}
+    }
 
     void Awake()
     {
@@ -159,7 +182,7 @@ public class UIController : MonoBehaviour {
     {
         GameObject controlPanelGameobject = null;
 
-        switch(bee.type)
+        switch (bee.type)
         {
             case Bee.BeeType.Male:
                 controlPanelGameobject = maleBeeCP;
@@ -187,7 +210,7 @@ public class UIController : MonoBehaviour {
 
         bee.workQueueChanged = true;
 
-		this.controlPanelGameobject = controlPanelGameobject;
-		this.controlPanelBee = bee;
+        this.controlPanelGameobject = controlPanelGameobject;
+        this.controlPanelBee = bee;
     }
 }

@@ -97,7 +97,7 @@ public class HexController : MonoBehaviour
 
                         tile = Instantiate(flowerTilePrefabs[flowerTileIndex]) as GameObject;
 
-                        tile.GetComponent<FlowerTileController>().init(indexI, indexJ, 100, 100);
+                        tile.GetComponent<FlowerTileController>().init(indexI, indexJ, 10000, 10000);
 
 
                         tiles[indexI][indexJ] = tile.GetComponent<FlowerTileController>();
