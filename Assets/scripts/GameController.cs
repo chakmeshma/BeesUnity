@@ -8,6 +8,7 @@ using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
 {
+    public Material transparentGrassMaterial;
     public long lastUIEventTimeStamp;
     public Stopwatch uiEventStopWatch;
     private static GameController instance;

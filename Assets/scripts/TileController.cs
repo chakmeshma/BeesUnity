@@ -146,7 +146,7 @@ public class TileController : MonoBehaviour
                             thisRenderer.material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
                             thisRenderer.material.renderQueue = 3000;
                             if (thisRenderer.material.HasProperty("_Color"))
-                                thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.3f);
+                                thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.5f);
                         }
                     }
                 }
@@ -154,7 +154,8 @@ public class TileController : MonoBehaviour
                 {
                     foreach (Renderer thisRenderer in targetTileController.GetComponentsInChildren<Renderer>())
                     {
-                        thisRenderer.material.color = new Color(thisRenderer.material.color.r, thisRenderer.material.color.g, thisRenderer.material.color.b, 0.2f);
+                        if (!thisRenderer.gameObject.name.Contains("Grass Tile"))
+                            thisRenderer.material = GameController.getInstance().transparentGrassMaterial;
                     }
                 }
                 else if (targetTileController is HiveTileController)
